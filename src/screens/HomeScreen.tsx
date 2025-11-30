@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -33,6 +33,11 @@ function HomeScreen(): React.ReactElement {
         <Text style={styles.subtitle}>{t('appSubtitle')}</Text>
       </View>
       <View style={styles.actions}>
+        <Image
+          source={getStallImage()}
+          style={styles.stallHome}
+          resizeMode="contain"
+        />
         <TouchableOpacity style={styles.primaryButton} onPress={handleStart}>
           <Text style={styles.primaryButtonText}>{t('start')}</Text>
         </TouchableOpacity>
@@ -52,9 +57,7 @@ function HomeScreen(): React.ReactElement {
         </View>
       </View>
       <View style={styles.footer}>
-        <Text style={styles.footerText}>
-          Drag & Drop • 1 phút • Lì xì & Sưu tầm
-        </Text>
+        <Text style={styles.footerText}>Aiiiiiii • tạp hoá đeeeeee</Text>
       </View>
     </SafeAreaView>
   );
@@ -71,6 +74,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 24,
   },
+  stallHome: { width: '86%', height: 160, marginBottom: 16 },
   primaryButton: {
     backgroundColor: '#8B4513',
     paddingVertical: 14,
@@ -96,3 +100,4 @@ const styles = StyleSheet.create({
 });
 
 export default HomeScreen;
+import { getStallImage } from '../game/assets';

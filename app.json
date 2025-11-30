@@ -1,4 +1,9 @@
 {
   "name": "VintageVendor",
-  "displayName": "VintageVendor"
+  "displayName": "VintageVendor",
+  "extra": {
+    "eas": {
+      "projectId": "13dfb276-c925-434b-a877-df3e0f347437"
+    }
+  }
 }

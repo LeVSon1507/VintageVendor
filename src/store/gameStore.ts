@@ -1,15 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {
-  GameState,
-  Settings,
-  Score,
-  Customer,
-  DragItem,
-  Collectible,
-  GamePhoto,
-} from '../types';
+import { GameState, Settings, Customer, DragItem, Collectible } from '../types';
 
 interface GameStore {
   // Game state
@@ -20,6 +12,13 @@ interface GameStore {
   timeRemaining: number;
   gameStartTime: number;
   isPaused: boolean;
+
+  // Progression
+  coins: number;
+  level: number;
+  exp: number;
+  energy: number;
+  maxEnergy: number;
 
   // Player data
   playerName: string;
@@ -52,6 +51,14 @@ interface GameStore {
   spawnCustomerWithOrder: () => void;
   serveCurrentCustomerCorrect: () => void;
   serveCurrentCustomerWrong: () => void;
+  finalizeServeCurrentCustomer: () => void;
+
+  // Progression actions
+  addCoins: (amount: number) => void;
+  addExp: (amount: number) => void;
+  consumeEnergy: (amount: number) => void;
+  restoreEnergy: (amount: number) => void;
+  resetRoundTimer: () => void;
 
   // Score management
   addScore: (points: number) => void;
@@ -111,6 +118,12 @@ const useGameStore = create<GameStore>()(
       timeRemaining: 60,
       gameStartTime: 0,
       isPaused: false,
+
+      coins: 0,
+      level: 1,
+      exp: 0,
+      energy: 10,
+      maxEnergy: 10,
 
       playerName: 'Player',
       playerId: '',
@@ -185,14 +198,31 @@ const useGameStore = create<GameStore>()(
         const current = state.customers[0];
         const { calculateServeScore } = require('../game/serve');
         const points = current.order.items.reduce(
-          (sum: number, item: any) => sum + calculateServeScore(item, state.timeRemaining, state.combo),
+          (sum: number, item: any) =>
+            sum + calculateServeScore(item, state.timeRemaining, state.combo),
           0,
         );
         const newScore = state.currentScore + points;
         set({ currentScore: newScore });
-        set({ customers: state.customers.slice(1) });
         set({ customersServed: state.customersServed + 1 });
         set({ combo: state.combo + 1 });
+
+        const coinsGain = current.order.totalPrice;
+        const expGain = Math.max(1, current.order.items.length);
+        const nextExp = state.exp + expGain;
+        const levelUpThreshold = 10;
+        const didLevelUp = nextExp >= levelUpThreshold;
+        set({
+          coins: state.coins + coinsGain,
+          exp: didLevelUp ? nextExp - levelUpThreshold : nextExp,
+          level: didLevelUp ? state.level + 1 : state.level,
+        });
+      },
+
+      finalizeServeCurrentCustomer: () => {
+        const state = get();
+        if (state.customers.length === 0) return;
+        set({ customers: state.customers.slice(1) });
       },
 
       serveCurrentCustomerWrong: () => {
@@ -205,6 +235,11 @@ const useGameStore = create<GameStore>()(
           customers: [{ ...current, patience: updatedPatience, mood: updatedMood }, ...state.customers.slice(1)],
         });
         set({ combo: 0 });
+
+        const penaltyCoins = Math.max(0, Math.round(current.order.totalPrice * 0.1));
+        const penaltyScore = 50;
+        set({ coins: Math.max(0, state.coins - penaltyCoins) });
+        set({ currentScore: Math.max(0, state.currentScore - penaltyScore) });
       },
 
       // Score management
@@ -324,6 +359,35 @@ const useGameStore = create<GameStore>()(
           error: null,
         });
       },
+
+      // Progression actions
+      addCoins: amount => {
+        const state = get();
+        set({ coins: state.coins + Math.max(0, amount) });
+      },
+      addExp: amount => {
+        const state = get();
+        const next = state.exp + Math.max(0, amount);
+        const threshold = 10;
+        const up = Math.floor(next / threshold);
+        set({ exp: next % threshold, level: state.level + up });
+      },
+      consumeEnergy: amount => {
+        const state = get();
+        set({ energy: Math.max(0, state.energy - Math.max(0, amount)) });
+      },
+      restoreEnergy: amount => {
+        const state = get();
+        set({
+          energy: Math.min(state.maxEnergy, state.energy + Math.max(0, amount)),
+        });
+      },
+      resetRoundTimer: () => {
+        const state = get();
+        const base = state.settings.difficulty === 'easy' ? 90 : state.settings.difficulty === 'hard' ? 45 : 60;
+        const adjusted = Math.max(20, base - state.level * 5);
+        set({ timeRemaining: adjusted });
+      },
     }),
     {
       name: 'vintage-vendor-game-store',
@@ -336,6 +400,11 @@ const useGameStore = create<GameStore>()(
         totalGamesPlayed: state.totalGamesPlayed,
         settings: state.settings,
         collectibles: state.collectibles,
+        coins: state.coins,
+        level: state.level,
+        exp: state.exp,
+        energy: state.energy,
+        maxEnergy: state.maxEnergy,
       }),
     },
   ),

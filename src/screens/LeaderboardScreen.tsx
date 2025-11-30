@@ -1,12 +1,13 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 function LeaderboardScreen(): React.ReactElement {
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <Text style={styles.title}>Bảng xếp hạng</Text>
       <Text style={styles.hint}>Leaderboard sẽ được đồng bộ sau — placeholder</Text>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -17,4 +18,3 @@ const styles = StyleSheet.create({
 });
 
 export default LeaderboardScreen;
-

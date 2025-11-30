@@ -9,8 +9,8 @@ export const translations = {
     time: '⏱',
     score: '⭐',
     customers: '👥',
-    appTitle: 'Vintage Vendor',
-    appSubtitle: 'Saigon/Hanoi • 80s–90s',
+    appTitle: 'Tạp hoá Thị xã',
+    appSubtitle: 'Thị xã Tam Kỳ • 80s–90s',
   },
   en: {
     start: 'Start',
@@ -22,8 +22,7 @@ export const translations = {
     time: '⏱',
     score: '⭐',
     customers: '👥',
-    appTitle: 'Vintage Vendor',
-    appSubtitle: 'Saigon/Hanoi • 80s–90s',
+    appTitle: 'Vintage Grocery',
+    appSubtitle: 'Tam Ky • 80s–90s',
   },
 } as const;
-

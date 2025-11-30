@@ -6,10 +6,11 @@ import { getItemImage } from '../game/assets';
 type OrderCardProps = {
   order: Order;
   compact?: boolean;
+  remaining?: number;
 };
 
 function OrderCard(props: OrderCardProps): React.ReactElement {
-  const { order, compact } = props;
+  const { order, compact, remaining } = props;
 
   return (
     <View style={styles.card}>
@@ -32,7 +33,9 @@ function OrderCard(props: OrderCardProps): React.ReactElement {
       })}
       <View style={styles.footerRow}>
         <Text style={compact ? styles.totalSm : styles.total}>Tổng: {order.totalPrice}₫</Text>
-        <Text style={compact ? styles.limitSm : styles.limit}>Giới hạn: {order.timeLimit}s</Text>
+        <Text style={compact ? styles.limitSm : styles.limit}>
+          {typeof remaining === 'number' ? `Còn lại: ${remaining}s` : `Giới hạn: ${order.timeLimit}s`}
+        </Text>
       </View>
     </View>
   );
@@ -44,10 +47,10 @@ const styles = StyleSheet.create({
   titleSm: { color: '#3B2F2F', fontWeight: '700', marginBottom: 4, fontSize: 12 },
   itemRow: { marginBottom: 8, flexDirection: 'row', alignItems: 'center' },
   itemRowSm: { marginBottom: 6, flexDirection: 'row', alignItems: 'center' },
-  itemName: { color: '#3B2F2F', fontWeight: '600' },
-  itemNameSm: { color: '#3B2F2F', fontWeight: '600', fontSize: 12 },
-  itemInfo: { color: '#6B5B5B' },
-  itemInfoSm: { color: '#6B5B5B', fontSize: 11 },
+  itemName: { color: '#3B2F2F', fontWeight: '600', marginLeft: 8 },
+  itemNameSm: { color: '#3B2F2F', fontWeight: '600', fontSize: 12, marginLeft: 8 },
+  itemInfo: { color: '#6B5B5B', marginLeft: 8 },
+  itemInfoSm: { color: '#6B5B5B', fontSize: 11, marginLeft: 8 },
   ingredients: { marginTop: 4 },
   ingredientText: { color: '#6B5B5B' },
   footerRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },

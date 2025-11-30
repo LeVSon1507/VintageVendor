@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Switch } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import useGameStore from '../store/gameStore';
 
 function SettingsScreen(): React.ReactElement {
@@ -26,7 +27,7 @@ function SettingsScreen(): React.ReactElement {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <Text style={styles.title}>Cài đặt</Text>
       <View style={styles.rowBetween}>
         <Text style={styles.label}>Ngôn ngữ</Text>
@@ -60,7 +61,7 @@ function SettingsScreen(): React.ReactElement {
           </TouchableOpacity>
         </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 

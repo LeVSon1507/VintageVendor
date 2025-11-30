@@ -1,5 +1,13 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Image,
+  Animated,
+  ScrollView,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -19,6 +27,7 @@ import {
   playServeFail,
   playClick,
 } from '../audio/soundManager';
+import { INGREDIENT_CATEGORIES, CATEGORY_LABELS } from '../game/categories';
 
 type GameScreenNavigation = StackNavigationProp<RootStackParamList, 'Game'>;
 
@@ -39,28 +48,39 @@ function GameScreen(): React.ReactElement {
   );
   const updateCustomer = useGameStore(state => state.updateCustomer);
   const settings = useGameStore(state => state.settings);
+  const coins = useGameStore(state => state.coins);
+  const level = useGameStore(state => state.level);
+  const exp = useGameStore(state => state.exp);
+  const energy = useGameStore(state => state.energy);
+  const maxEnergy = useGameStore(state => state.maxEnergy);
 
   const intervalRef = useRef<number | null>(null);
 
-  useEffect(function startTimer() {
-    if (intervalRef.current) return;
-    intervalRef.current = setInterval(function tick() {
-      const dec = useGameStore.getState().decrementTime;
-      dec();
-    }, 1000);
-    return function cleanup() {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    };
-  }, []);
+  // timer effect will be defined after acceptedOrder
 
   useEffect(function setupAmbient() {
     startAmbient(settings.musicVolume);
     return function cleanupAmbient() {
       stopAmbient();
     };
+  }, []);
+
+  useEffect(function animateStall() {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(stallAnim, {
+          toValue: 1,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(stallAnim, {
+          toValue: 0,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+      ]),
+    ).start();
+    return function cleanup() {};
   }, []);
 
   useEffect(function autoSpawnOnMount() {
@@ -116,6 +136,35 @@ function GameScreen(): React.ReactElement {
   const [selectedIngredientIds, setSelectedIngredientIds] = useState<string[]>(
     [],
   );
+  const [reaction, setReaction] = useState<'success' | 'fail' | null>(null);
+  const [coinText, setCoinText] = useState<string>('');
+  const coinAnim = useRef(new Animated.Value(0)).current;
+  const consumeEnergy = useGameStore(state => state.consumeEnergy);
+  const [acceptedOrder, setAcceptedOrder] = useState<boolean>(false);
+  const [activeCategory, setActiveCategory] = useState<string>('base');
+  const stallAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(
+    function startTimer() {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      intervalRef.current = setInterval(function tick() {
+        if (acceptedOrder) {
+          const dec = useGameStore.getState().decrementTime;
+          dec();
+        }
+      }, 1000);
+      return function cleanup() {
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+      };
+    },
+    [acceptedOrder],
+  );
 
   const onArriveCustomer = useCallback(
     function onArriveCustomer(customerId: string): void {
@@ -144,15 +193,62 @@ function GameScreen(): React.ReactElement {
     const result = validateServe(currentOrderItem, providedIngredients);
     if (result.ok) {
       serveCurrentCustomerCorrect();
+      consumeEnergy(1);
       playServeSuccess(settings.soundVolume);
+      setReaction('success');
+      setTimeout(function clearReaction() {
+        setReaction(null);
+      }, 800);
+      setCoinText(`+${currentOrderItem.price.toLocaleString('vi-VN')}₫`);
+      coinAnim.setValue(0);
+      Animated.timing(coinAnim, {
+        toValue: 1,
+        duration: 1200,
+        useNativeDriver: true,
+      }).start(function end() {
+        setCoinText('');
+        useGameStore.getState().finalizeServeCurrentCustomer();
+        setAcceptedOrder(false);
+        spawnCustomerWithOrder();
+      });
     } else {
       const compiled = compileSelectedDish(selectedIngredientIds);
       if (compiled) {
         serveCurrentCustomerWrong();
+        consumeEnergy(1);
         playServeFail(settings.soundVolume);
+        setReaction('fail');
+        setTimeout(function clearReaction() {
+          setReaction(null);
+        }, 800);
+        const penalty = Math.max(0, Math.round(currentOrderItem.price * 0.1));
+        setCoinText(`-${penalty.toLocaleString('vi-VN')}₫`);
+        coinAnim.setValue(0);
+        Animated.timing(coinAnim, {
+          toValue: 1,
+          duration: 1200,
+          useNativeDriver: true,
+        }).start(function end() {
+          setCoinText('');
+        });
       } else {
         serveCurrentCustomerWrong();
+        consumeEnergy(1);
         playServeFail(settings.soundVolume);
+        setReaction('fail');
+        setTimeout(function clearReaction() {
+          setReaction(null);
+        }, 800);
+        const penalty = Math.max(0, Math.round(currentOrderItem.price * 0.1));
+        setCoinText(`-${penalty.toLocaleString('vi-VN')}₫`);
+        coinAnim.setValue(0);
+        Animated.timing(coinAnim, {
+          toValue: 1,
+          duration: 1200,
+          useNativeDriver: true,
+        }).start(function end() {
+          setCoinText('');
+        });
       }
     }
     setSelectedIngredientIds([]);
@@ -165,90 +261,214 @@ function GameScreen(): React.ReactElement {
       ? 45
       : 60;
   const timeRatio = Math.max(0, Math.min(1, timeRemaining / totalTime));
+  const fillColor =
+    timeRatio > 0.5 ? '#8B4513' : timeRatio > 0.2 ? '#D38B5D' : '#C75050';
 
   const requiredIds =
     customers.length > 0
       ? customers[0].order.items[0].ingredients.map(i => i.id)
       : [];
+  const showHint = customersServed < 2;
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.topBar}>
-        <Text style={styles.topText}>⏱ {timeRemaining}s</Text>
-        <Text style={styles.topText}>⭐ {currentScore}</Text>
-        <Text style={styles.topText}>👥 {customersServed}</Text>
+        <Text style={styles.topText}>💰 {coins}</Text>
+        <View style={styles.levelWrap}>
+          <Text style={styles.levelText}>Lv {level}</Text>
+          <View style={styles.levelBarBg} />
+          <View
+            style={[styles.levelBarFill, { width: `${(exp / 10) * 100}%` }]}
+          />
+        </View>
+        <Text style={styles.topText}>
+          ⚡ {energy}/{maxEnergy}
+        </Text>
       </View>
       <View style={styles.progressWrap}>
         <View style={styles.progressBg} />
-        <View style={[styles.progressFill, { width: `${timeRatio * 100}%` }]} />
+        <View
+          style={[
+            styles.progressFill,
+            { width: `${timeRatio * 100}%`, backgroundColor: fillColor },
+          ]}
+        />
       </View>
       <View style={styles.playArea}>
         {customers.length === 0 ? (
           <>
-            <Text style={styles.hint}>Chưa có khách — bấm Spawn khách</Text>
+            <Animated.Image
+              source={getStallImage()}
+              style={[
+                styles.stallImage,
+                {
+                  transform: [
+                    {
+                      translateY: stallAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0, -2],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+              resizeMode="contain"
+            />
             <Text style={styles.hint}>
               Khách sẽ tự ghé quầy trong chốc lát...
             </Text>
           </>
         ) : (
           <>
-            <OrderCard order={customers[0].order} compact />
+            <Animated.Image
+              source={getStallImage()}
+              style={[
+                styles.stallImage,
+                {
+                  transform: [
+                    {
+                      translateY: stallAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0, -2],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+              resizeMode="contain"
+            />
+            {acceptedOrder ? (
+              <OrderCard
+                order={customers[0].order}
+                compact
+                remaining={timeRemaining}
+              />
+            ) : null}
             <CustomerWalker
+              key={customers[0].id}
               customer={customers[0]}
               onArrive={onArriveCustomer}
+              bubbleItem={
+                acceptedOrder ? undefined : customers[0].order.items[0]
+              }
+              onAcceptOrder={() => {
+                setAcceptedOrder(true);
+                useGameStore.getState().resetRoundTimer();
+              }}
+              reaction={reaction}
+              coinText={coinText}
+              coinAnim={coinAnim}
             />
-            <View style={styles.row}>
-              <Text style={styles.hint}>
-                Chọn nguyên liệu cho món đầu tiên:
-              </Text>
-            </View>
-            <View style={styles.ingredientsRow}>
-              {INGREDIENT_CATALOG.map(function renderIngredientChip(
-                ingredient,
-              ) {
-                const isSelected = selectedIngredientIds.includes(
-                  ingredient.id,
-                );
-                const isRequired = requiredIds.includes(ingredient.id);
-                return (
-                  <TouchableOpacity
-                    key={ingredient.id}
-                    style={[
-                      isSelected ? styles.chipSelected : styles.chip,
-                      isRequired ? styles.chipHint : null,
-                      isSelected ? styles.chipScaleSelected : null,
-                    ]}
-                    onPress={() => toggleIngredient(ingredient.id)}
-                  >
-                    <Image
-                      source={getIngredientImage(ingredient.id)}
-                      style={styles.chipImage}
-                    />
-                    <Text
+            {acceptedOrder && (
+              <View style={styles.row}>
+                <Text style={styles.hint}>
+                  Chọn nguyên liệu cho món đầu tiên:
+                </Text>
+              </View>
+            )}
+            {acceptedOrder && (
+              <View style={styles.categoryRow}>
+                {Object.keys(INGREDIENT_CATEGORIES).map(function renderCat(
+                  key,
+                ) {
+                  const isActive = activeCategory === key;
+                  return (
+                    <TouchableOpacity
+                      key={key}
                       style={
-                        isSelected ? styles.chipTextSelected : styles.chipText
+                        isActive
+                          ? styles.categoryChipActive
+                          : styles.categoryChip
                       }
+                      onPress={() => setActiveCategory(key)}
                     >
-                      {ingredient.name}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-            <View style={styles.row}>
-              <TouchableOpacity
-                style={styles.sampleButtonPrimary}
-                onPress={handleServe}
+                      <Text style={styles.categoryText}>
+                        {CATEGORY_LABELS[key as keyof typeof CATEGORY_LABELS]}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+            {acceptedOrder && (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.ingredientsScroll}
               >
-                <Text style={styles.sampleButtonText}>Giao món</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.secondaryButtonSmall}
-                onPress={handleServeWrong}
-              >
-                <Text style={styles.secondaryButtonText}>Phục vụ sai</Text>
-              </TouchableOpacity>
-            </View>
+                {INGREDIENT_CATALOG.filter(function inCat(ingredient) {
+                  const list =
+                    INGREDIENT_CATEGORIES[
+                      activeCategory as keyof typeof INGREDIENT_CATEGORIES
+                    ];
+                  return list.includes(ingredient.id);
+                }).map(function renderIngredientChip(ingredient) {
+                  const isSelected = selectedIngredientIds.includes(
+                    ingredient.id,
+                  );
+                  const isRequired = requiredIds.includes(ingredient.id);
+                  return (
+                    <TouchableOpacity
+                      key={ingredient.id}
+                      style={[
+                        isSelected ? styles.chipSelected : styles.chip,
+                        showHint && isRequired ? styles.chipHint : null,
+                        isSelected ? styles.chipScaleSelected : null,
+                      ]}
+                      onPress={() => toggleIngredient(ingredient.id)}
+                    >
+                      <Image
+                        source={getIngredientImage(ingredient.id)}
+                        style={styles.chipImage}
+                      />
+                      <Text
+                        style={
+                          isSelected ? styles.chipTextSelected : styles.chipText
+                        }
+                      >
+                        {ingredient.name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            )}
+            {acceptedOrder && (
+              <View style={styles.row}>
+                <Text style={styles.hint}>Bạn đã chọn:</Text>
+              </View>
+            )}
+            {acceptedOrder && (
+              <View style={styles.selectedRow}>
+                {selectedIngredientIds.map(function renderSelected(id) {
+                  return (
+                    <View key={id} style={styles.selectedChip}>
+                      <Image
+                        source={getIngredientImage(id)}
+                        style={styles.selectedImage}
+                      />
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+
+            {acceptedOrder && (
+              <View style={styles.row}>
+                <TouchableOpacity
+                  style={styles.sampleButtonPrimary}
+                  onPress={handleServe}
+                >
+                  <Text style={styles.sampleButtonText}>Giao món</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.secondaryButtonSmall}
+                  onPress={handleServeWrong}
+                >
+                  <Text style={styles.secondaryButtonText}>Chọn lại</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </>
         )}
       </View>
@@ -287,12 +507,44 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   progressFill: { height: 8, backgroundColor: '#8B4513', borderRadius: 4 },
+  levelWrap: {
+    width: 96,
+    height: 18,
+    position: 'relative',
+    justifyContent: 'center',
+  },
+  levelText: {
+    color: '#3B2F2F',
+    fontSize: 10,
+    position: 'absolute',
+    zIndex: 5,
+    alignSelf: 'center',
+    top: 0,
+  },
+  levelBarBg: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 12,
+    height: 4,
+    backgroundColor: '#D2B48C',
+    borderRadius: 2,
+  },
+  levelBarFill: {
+    position: 'absolute',
+    left: 0,
+    top: 12,
+    height: 4,
+    backgroundColor: '#8B4513',
+    borderRadius: 2,
+  },
   playArea: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
   },
+  stallImage: { width: '92%', height: 140, marginBottom: 8, marginTop: 16 },
   hint: { color: '#6B5B5B', textAlign: 'center', marginBottom: 16 },
   sampleButton: {
     backgroundColor: '#8B4513',
@@ -328,31 +580,57 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   secondaryButtonText: { color: '#3B2F2F', fontWeight: '500' },
-  ingredientsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 8,
-    justifyContent: 'center',
+  categoryRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 8 },
+  categoryChip: {
+    backgroundColor: '#E6D5B8',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    marginHorizontal: 4,
   },
+  categoryChipActive: {
+    backgroundColor: '#8B4513',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    marginHorizontal: 4,
+  },
+  categoryText: { color: '#3B2F2F' },
+  ingredientsScroll: { paddingHorizontal: 12, marginTop: 6 },
   chip: {
     backgroundColor: '#E6D5B8',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
     borderRadius: 16,
     margin: 4,
+    minWidth: 92,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   chipSelected: {
     backgroundColor: '#8B4513',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
     borderRadius: 16,
     margin: 4,
+    minWidth: 92,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   chipScaleSelected: { transform: [{ scale: 1.05 }] },
   chipHint: { borderWidth: 1, borderColor: '#8B4513' },
   chipImage: { width: 24, height: 24, marginRight: 6 },
   chipText: { color: '#3B2F2F', fontWeight: '500' },
   chipTextSelected: { color: '#FFF8E1', fontWeight: '600' },
+
+  selectedRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 6 },
+  selectedChip: {
+    backgroundColor: '#FFF8E1',
+    borderRadius: 16,
+    marginHorizontal: 4,
+    padding: 6,
+  },
+  selectedImage: { width: 24, height: 24 },
 });
 
 export default GameScreen;
