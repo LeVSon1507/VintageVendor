@@ -519,7 +519,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     zIndex: 5,
     alignSelf: 'center',
-    top: 0,
+    top: -2,
   },
   levelBarBg: {
     position: 'absolute',

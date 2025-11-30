@@ -85,6 +85,48 @@ export const RECIPE_CATALOG: RecipeDefinition[] = [
     basePrice: 12000,
     preparationTime: 9,
   },
+  {
+    id: 'soda_chai',
+    name: 'Soda chai',
+    ingredients: [
+      { id: 'soda', name: 'Soda', type: 'liquid', quantity: 330, unit: 'ml' },
+    ],
+    basePrice: 10000,
+    preparationTime: 3,
+  },
+  {
+    id: 'xien_que_tuong_ot',
+    name: 'Xiên que tương ớt',
+    ingredients: [
+      { id: 'thit_xien', name: 'Thịt xiên', type: 'solid', quantity: 60, unit: 'g' },
+      { id: 'tuong_ot', name: 'Tương ớt', type: 'liquid', quantity: 10, unit: 'ml' },
+      { id: 'tieu', name: 'Tiêu', type: 'powder', quantity: 2, unit: 'g' },
+    ],
+    basePrice: 17000,
+    preparationTime: 9,
+  },
+  {
+    id: 'ca_vien_chien',
+    name: 'Cá viên chiên',
+    ingredients: [
+      { id: 'ca_vien', name: 'Cá viên', type: 'solid', quantity: 80, unit: 'g' },
+      { id: 'dua_leo', name: 'Dưa leo', type: 'solid', quantity: 20, unit: 'g' },
+      { id: 'rau_que', name: 'Rau quế', type: 'garnish', quantity: 5, unit: 'g' },
+    ],
+    basePrice: 16000,
+    preparationTime: 8,
+  },
+  {
+    id: 'soda_chanh_muoi',
+    name: 'Soda chanh muối',
+    ingredients: [
+      { id: 'soda', name: 'Soda', type: 'liquid', quantity: 200, unit: 'ml' },
+      { id: 'chanh', name: 'Chanh', type: 'solid', quantity: 1, unit: 'piece' },
+      { id: 'muoi', name: 'Muối', type: 'powder', quantity: 2, unit: 'g' },
+    ],
+    basePrice: 13000,
+    preparationTime: 9,
+  },
 ];
 
 export function getRecipeById(id: string): RecipeDefinition | undefined {

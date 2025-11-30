@@ -58,6 +58,7 @@ export type OrderItem = {
   ingredients: Ingredient[];
   price: number;
   preparationTime: number;
+  requirements?: string[];
 };
 
 export type Ingredient = {

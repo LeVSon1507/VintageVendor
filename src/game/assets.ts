@@ -32,6 +32,22 @@ export const ITEM_ASSETS: Record<string, ItemAsset> = {
     id: 'soda_da_chanh',
     displayName: 'Soda đá chanh',
   },
+  soda_chai: {
+    id: 'soda_chai',
+    displayName: 'Soda chai',
+  },
+  xien_que_tuong_ot: {
+    id: 'xien_que_tuong_ot',
+    displayName: 'Xiên que tương ớt',
+  },
+  ca_vien_chien: {
+    id: 'ca_vien_chien',
+    displayName: 'Cá viên chiên',
+  },
+  soda_chanh_muoi: {
+    id: 'soda_chanh_muoi',
+    displayName: 'Soda chanh muối',
+  },
 };
 
 export const ITEM_IMAGES: Record<string, any> = {
@@ -42,6 +58,10 @@ export const ITEM_IMAGES: Record<string, any> = {
   xien_que: require('../assets/images/foods/xien_que.webp'),
   banh_bo: require('../assets/images/foods/banh_bo.webp'),
   soda_da_chanh: require('../assets/images/foods/soda_da_chanh.webp'),
+  soda_chai: require('../assets/images/foods/soda_chai.webp'),
+  xien_que_tuong_ot: require('../assets/images/foods/xien_que_tuong_ot.webp'),
+  ca_vien_chien: require('../assets/images/foods/ca_vien_chien.webp'),
+  soda_chanh_muoi: require('../assets/images/foods/soda_da_chanh.webp'),
 };
 
 export function getItemImage(id: string): any {
@@ -67,6 +87,11 @@ export const INGREDIENT_IMAGES: Record<string, any> = {
   nuoc_cot_dua: require('../assets/images/ingredient/nuoc_cot_dua.webp'),
   soda: require('../assets/images/ingredient/soda.webp'),
   chanh: require('../assets/images/ingredient/chanh.webp'),
+  ca_vien: require('../assets/images/ingredient/ca_vien.webp'),
+  dua_leo: require('../assets/images/ingredient/dua_leo.webp'),
+  rau_que: require('../assets/images/ingredient/rau_que.webp'),
+  muoi: require('../assets/images/ingredient/muoi.webp'),
+  tieu: require('../assets/images/ingredient/tieu.webp'),
 };
 
 export function getIngredientImage(id: string): any {

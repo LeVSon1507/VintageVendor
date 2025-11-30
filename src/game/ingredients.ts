@@ -19,6 +19,11 @@ export const INGREDIENT_CATALOG: Ingredient[] = [
   { id: 'nuoc_cot_dua', name: 'Nước cốt dừa', type: 'liquid', quantity: 20, unit: 'ml' },
   { id: 'soda', name: 'Soda', type: 'liquid', quantity: 200, unit: 'ml' },
   { id: 'chanh', name: 'Chanh', type: 'solid', quantity: 1, unit: 'piece' },
+  { id: 'ca_vien', name: 'Cá viên', type: 'solid', quantity: 60, unit: 'g' },
+  { id: 'dua_leo', name: 'Dưa leo', type: 'solid', quantity: 20, unit: 'g' },
+  { id: 'rau_que', name: 'Rau quế', type: 'garnish', quantity: 5, unit: 'g' },
+  { id: 'muoi', name: 'Muối', type: 'powder', quantity: 2, unit: 'g' },
+  { id: 'tieu', name: 'Tiêu', type: 'powder', quantity: 2, unit: 'g' },
 ];
 
 export function getIngredientById(id: string): Ingredient | undefined {

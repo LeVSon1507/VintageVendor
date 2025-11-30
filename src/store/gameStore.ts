@@ -39,6 +39,7 @@ interface GameStore {
   error: string | null;
   showSettings: boolean;
   showLeaderboard: boolean;
+  lastRecipeId?: string;
 
   // Actions
   setGameState: (state: GameState) => void;
@@ -140,6 +141,7 @@ const useGameStore = create<GameStore>()(
       error: null,
       showSettings: false,
       showLeaderboard: false,
+      lastRecipeId: undefined,
 
       // Actions
       setGameState: state => set({ gameState: state }),
@@ -161,6 +163,7 @@ const useGameStore = create<GameStore>()(
           isPaused: false,
           customers: [],
           dragItems: [],
+          lastRecipeId: undefined,
         });
       },
 
@@ -187,9 +190,9 @@ const useGameStore = create<GameStore>()(
         const { createCustomer } = require('../game/customers');
         const { generateOrder } = require('../game/orders');
         const customer = createCustomer();
-        const order = generateOrder({ difficulty: state.settings.difficulty });
+        const order = generateOrder({ difficulty: state.settings.difficulty, excludeItemIds: state.lastRecipeId ? [state.lastRecipeId] : [] });
         const withOrder = { ...customer, order };
-        set({ customers: [...state.customers, withOrder] });
+        set({ customers: [...state.customers, withOrder], lastRecipeId: order.items[0]?.id });
       },
 
       serveCurrentCustomerCorrect: () => {

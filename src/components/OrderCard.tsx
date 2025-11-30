@@ -27,6 +27,9 @@ function OrderCard(props: OrderCardProps): React.ReactElement {
                   <Text key={ingredient.id} style={styles.ingredientText}>• {ingredient.name}</Text>
                 );
               })}
+              {compact ? null : (item.requirements && item.requirements.length > 0 ? (
+                <Text style={styles.requirementText}>Yêu cầu: {item.requirements.join(', ')}</Text>
+              ) : null)}
             </View>
           </View>
         );
@@ -53,6 +56,7 @@ const styles = StyleSheet.create({
   itemInfoSm: { color: '#6B5B5B', fontSize: 11, marginLeft: 8 },
   ingredients: { marginTop: 4 },
   ingredientText: { color: '#6B5B5B' },
+  requirementText: { color: '#8B4513', marginTop: 2, fontStyle: 'italic' },
   footerRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
   total: { color: '#3B2F2F', fontWeight: '700' },
   limit: { color: '#6B5B5B', fontWeight: '500' },
