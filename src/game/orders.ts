@@ -1,4 +1,4 @@
-import { Difficulty, Order, OrderItem } from '../types';
+import { Difficulty, Order, OrderItem, Customer, Ingredient } from '../types';
 import { RECIPE_CATALOG, toOrderItem } from './recipes';
 import { createRng } from './rng';
 
@@ -6,6 +6,7 @@ export type OrderOptions = {
   difficulty: Difficulty;
   seed?: number;
   excludeItemIds?: string[];
+  customerType?: Customer['type'];
 };
 
 function pickRecipeId(options: OrderOptions): string {
@@ -19,18 +20,18 @@ function pickRecipeId(options: OrderOptions): string {
   return chosen.id;
 }
 
-function generateRequirements(id: string, seed?: number): string[] {
+function generateRequirements(id: string, seed?: number, customerType?: Customer['type']): string[] {
   const pool: Record<string, string[]> = {
     soda_da_chanh: ['Ít đá', 'Thêm chanh'],
     soda_chai: ['Ướp lạnh', 'Không đá'],
-    soda_chanh_muoi: ['Ít đá', 'Ít muối', 'Thêm chanh'],
-    xien_que: ['Ít gia vị'],
-    xien_que_tuong_ot: ['Ít tiêu', 'Thêm tương ớt'],
+    soda_chanh_muoi: ['Ít đá', 'Ít muối', 'Thêm chanh', 'Không muối'],
+    xien_que: ['Ít gia vị', 'Cay'],
+    xien_que_tuong_ot: ['Ít tiêu', 'Thêm tương ớt', 'Không cay', 'Cay'],
     ca_vien_chien: ['Không rau', 'Thêm dưa leo'],
     banh_mi_thit: ['Ít tương ớt', 'Thêm đồ chua'],
     che: ['Ít ngọt', 'Thêm đá'],
-    cafe_vot: ['Ít ngọt'],
-    sua_dau_nanh: ['Ít ngọt'],
+    cafe_vot: ['Ít ngọt', 'Nóng', 'Lạnh'],
+    sua_dau_nanh: ['Ít ngọt', 'Nóng', 'Lạnh', 'Thêm đá'],
   };
   const base = pool[id] ?? [];
   if (base.length === 0) return [];
@@ -39,7 +40,75 @@ function generateRequirements(id: string, seed?: number): string[] {
   const shuffled = [...base].sort(function shuffle() {
     return rng.nextInt(0, 100) % 2 === 0 ? 1 : -1;
   });
-  return shuffled.slice(0, count);
+  const picked = shuffled.slice(0, count);
+  if (customerType === 'elderly') {
+    if (id === 'xien_que_tuong_ot' && !picked.includes('Không cay')) picked.push('Không cay');
+    if (id === 'cafe_vot' && !picked.includes('Nóng')) picked.push('Nóng');
+    if (id === 'sua_dau_nanh' && !picked.includes('Nóng')) picked.push('Nóng');
+  }
+  if (customerType === 'student') {
+    if ((id === 'soda_da_chanh' || id === 'soda_chai' || id === 'sua_dau_nanh') && !picked.includes('Thêm đá')) picked.push('Thêm đá');
+    if (id.startsWith('xien_que') && !picked.includes('Cay')) picked.push('Cay');
+  }
+  return Array.from(new Set(picked));
+}
+
+function getIngredientByIdLocal(id: string): Ingredient | undefined {
+  const rec = RECIPE_CATALOG.find(r => r.ingredients.some(ing => ing.id === id));
+  if (rec) {
+    const found = rec.ingredients.find(ing => ing.id === id);
+    if (found) return found;
+  }
+  // Fallback minimal definitions
+  const fallback: Record<string, Ingredient> = {
+    da_vien: { id: 'da_vien', name: 'Đá viên', type: 'solid', quantity: 6, unit: 'piece' },
+    tuong_ot: { id: 'tuong_ot', name: 'Tương ớt', type: 'liquid', quantity: 10, unit: 'ml' },
+    tieu: { id: 'tieu', name: 'Tiêu', type: 'powder', quantity: 2, unit: 'g' },
+    muoi: { id: 'muoi', name: 'Muối', type: 'powder', quantity: 2, unit: 'g' },
+    nuoc_soi: { id: 'nuoc_soi', name: 'Nước sôi', type: 'liquid', quantity: 150, unit: 'ml' },
+  };
+  return fallback[id];
+}
+
+function adjustIngredientsForRequirements(id: string, base: Ingredient[], requirements: string[]): Ingredient[] {
+  let result = [...base];
+  function ensureIngredient(ingId: string): void {
+    if (!result.some(i => i.id === ingId)) {
+      const ing = getIngredientByIdLocal(ingId);
+      if (ing) result.push(ing);
+    }
+  }
+  function removeIngredient(ingId: string): void {
+    result = result.filter(i => i.id !== ingId);
+  }
+  if (id === 'cafe_vot') {
+    if (requirements.includes('Lạnh') || requirements.includes('Thêm đá')) {
+      ensureIngredient('da_vien');
+    }
+  }
+  if (id === 'sua_dau_nanh') {
+    if (requirements.includes('Lạnh') || requirements.includes('Thêm đá')) {
+      ensureIngredient('da_vien');
+    }
+  }
+  if (id === 'xien_que') {
+    if (requirements.includes('Cay')) {
+      ensureIngredient('tuong_ot');
+      ensureIngredient('tieu');
+    }
+  }
+  if (id === 'xien_que_tuong_ot') {
+    if (requirements.includes('Không cay')) {
+      removeIngredient('tieu');
+      removeIngredient('tuong_ot');
+    }
+  }
+  if (id === 'soda_chanh_muoi') {
+    if (requirements.includes('Không muối')) {
+      removeIngredient('muoi');
+    }
+  }
+  return result;
 }
 
 export function generateOrderItem(options: OrderOptions): OrderItem {
@@ -48,11 +117,14 @@ export function generateOrderItem(options: OrderOptions): OrderItem {
   const base = toOrderItem(recipe);
 
   const multiplier = options.difficulty === 'easy' ? 0.9 : options.difficulty === 'hard' ? 1.15 : 1.0;
+  const reqs = generateRequirements(recipe.id, options.seed, options.customerType);
+  const adjustedIngredients = adjustIngredientsForRequirements(recipe.id, base.ingredients, reqs);
   return {
     ...base,
     price: Math.round(base.price * multiplier),
     preparationTime: Math.round(base.preparationTime * multiplier),
-    requirements: generateRequirements(recipe.id, options.seed),
+    ingredients: adjustedIngredients,
+    requirements: reqs,
   };
 }
 

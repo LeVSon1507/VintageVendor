@@ -58,11 +58,11 @@ function CustomerWalker(props: CustomerWalkerProps): React.ReactElement {
         frameTimerRef.current = null;
       }
       Animated.sequence([
-        Animated.delay(180),
+        Animated.delay(220),
         Animated.timing(translateX, {
           toValue: 0,
-          duration: 2000,
-          easing: Easing.out(Easing.quad),
+          duration: 2200,
+          easing: Easing.inOut(Easing.quad),
           useNativeDriver: true,
         }),
       ]).start(function onDone() {
@@ -97,8 +97,8 @@ function CustomerWalker(props: CustomerWalkerProps): React.ReactElement {
             const total = walkFrames.length || 1;
             return (prev + 1) % total;
           });
-        }, 200) as unknown as number;
-      }, 180) as unknown as number;
+        }, 260) as unknown as number;
+      }, 220) as unknown as number;
       return function cleanup() {
         if (frameTimerRef.current) {
           clearInterval(frameTimerRef.current);
@@ -179,6 +179,17 @@ function CustomerWalker(props: CustomerWalkerProps): React.ReactElement {
               <Text style={styles.bubbleSub}>
                 {bubbleItem.price}₫ • {bubbleItem.preparationTime}s
               </Text>
+              {Array.isArray((bubbleItem as any).requirements) &&
+              (bubbleItem as any).requirements.length > 0 ? (
+                <View style={styles.bubbleReqRow}>
+                  <Text style={styles.bubbleReqLabel}>Yêu cầu:</Text>
+                  {(bubbleItem as any).requirements.map((req: string) => (
+                    <View key={req} style={styles.bubbleReqPill}>
+                      <Text style={styles.bubbleReqText}>{req}</Text>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
             </View>
           </View>
           <TouchableOpacity
@@ -227,6 +238,22 @@ const styles = StyleSheet.create({
   bubbleInfo: { flexDirection: 'column' },
   bubbleTitle: { color: '#3B2F2F', fontWeight: '700' },
   bubbleSub: { color: '#6B5B5B', marginTop: 2 },
+  bubbleReqRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  bubbleReqLabel: { color: '#6B5B5B', marginRight: 6, fontSize: 11 },
+  bubbleReqPill: {
+    backgroundColor: '#E6D5B8',
+    borderRadius: 10,
+    paddingVertical: 1,
+    paddingHorizontal: 6,
+    marginRight: 6,
+    marginTop: 2,
+  },
+  bubbleReqText: { color: '#3B2F2F', fontSize: 11 },
   bubbleButton: {
     backgroundColor: '#8B4513',
     marginTop: 8,

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { GameState, Settings, Customer, DragItem, Collectible } from '../types';
+import { GameState, Settings, Customer, DragItem, Collectible, LeaderboardEntry } from '../types';
 
 interface GameStore {
   // Game state
@@ -40,6 +40,9 @@ interface GameStore {
   showSettings: boolean;
   showLeaderboard: boolean;
   lastRecipeId?: string;
+  sessionCoins: number;
+  highCoins: number;
+  leaderboard: LeaderboardEntry[];
 
   // Actions
   setGameState: (state: GameState) => void;
@@ -142,6 +145,9 @@ const useGameStore = create<GameStore>()(
       showSettings: false,
       showLeaderboard: false,
       lastRecipeId: undefined,
+      sessionCoins: 0,
+      highCoins: 0,
+      leaderboard: [],
 
       // Actions
       setGameState: state => set({ gameState: state }),
@@ -164,6 +170,9 @@ const useGameStore = create<GameStore>()(
           customers: [],
           dragItems: [],
           lastRecipeId: undefined,
+          level: 1,
+          exp: 0,
+          sessionCoins: 0,
         });
       },
 
@@ -174,12 +183,25 @@ const useGameStore = create<GameStore>()(
         const state = get();
         const finalScore = state.currentScore;
         const newHighScore = Math.max(state.highScore, finalScore);
+        const durationSec = Math.max(0, Math.round((Date.now() - state.gameStartTime) / 1000));
+        const newHighCoins = Math.max(state.highCoins, state.sessionCoins);
+        const newEntry: LeaderboardEntry = {
+          rank: 0,
+          playerName: state.playerName,
+          score: state.sessionCoins,
+          duration: durationSec,
+          customersServed: state.customersServed,
+        };
+        const list = [...state.leaderboard, newEntry].sort(function cmp(a, b) { return b.score - a.score; });
+        const ranked = list.map(function withRank(entry, idx) { return { ...entry, rank: idx + 1 }; });
 
         set({
           gameState: 'gameOver',
           highScore: newHighScore,
           totalGamesPlayed: state.totalGamesPlayed + 1,
           isPaused: false,
+          highCoins: newHighCoins,
+          leaderboard: ranked,
         });
       },
 
@@ -190,7 +212,7 @@ const useGameStore = create<GameStore>()(
         const { createCustomer } = require('../game/customers');
         const { generateOrder } = require('../game/orders');
         const customer = createCustomer();
-        const order = generateOrder({ difficulty: state.settings.difficulty, excludeItemIds: state.lastRecipeId ? [state.lastRecipeId] : [] });
+        const order = generateOrder({ difficulty: state.settings.difficulty, excludeItemIds: state.lastRecipeId ? [state.lastRecipeId] : [], customerType: customer.type });
         const withOrder = { ...customer, order };
         set({ customers: [...state.customers, withOrder], lastRecipeId: order.items[0]?.id });
       },
@@ -217,6 +239,7 @@ const useGameStore = create<GameStore>()(
         const didLevelUp = nextExp >= levelUpThreshold;
         set({
           coins: state.coins + coinsGain,
+          sessionCoins: state.sessionCoins + coinsGain,
           exp: didLevelUp ? nextExp - levelUpThreshold : nextExp,
           level: didLevelUp ? state.level + 1 : state.level,
         });
@@ -242,6 +265,7 @@ const useGameStore = create<GameStore>()(
         const penaltyCoins = Math.max(0, Math.round(current.order.totalPrice * 0.1));
         const penaltyScore = 50;
         set({ coins: Math.max(0, state.coins - penaltyCoins) });
+        set({ sessionCoins: Math.max(0, state.sessionCoins - penaltyCoins) });
         set({ currentScore: Math.max(0, state.currentScore - penaltyScore) });
       },
 
@@ -400,6 +424,8 @@ const useGameStore = create<GameStore>()(
         playerName: state.playerName,
         playerId: state.playerId,
         highScore: state.highScore,
+        highCoins: state.highCoins,
+        leaderboard: state.leaderboard,
         totalGamesPlayed: state.totalGamesPlayed,
         settings: state.settings,
         collectibles: state.collectibles,

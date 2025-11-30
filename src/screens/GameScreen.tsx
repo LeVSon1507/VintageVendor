@@ -58,12 +58,15 @@ function GameScreen(): React.ReactElement {
 
   // timer effect will be defined after acceptedOrder
 
-  useEffect(function setupAmbient() {
-    startAmbient(settings.musicVolume);
-    return function cleanupAmbient() {
-      stopAmbient();
-    };
-  }, []);
+  useEffect(
+    function setupAmbient() {
+      startAmbient(settings.musicVolume);
+      return function cleanupAmbient() {
+        stopAmbient();
+      };
+    },
+    [settings.musicVolume],
+  );
 
   useEffect(function animateStall() {
     Animated.loop(
@@ -344,21 +347,23 @@ function GameScreen(): React.ReactElement {
                 remaining={timeRemaining}
               />
             ) : null}
-            <CustomerWalker
-              key={customers[0].id}
-              customer={customers[0]}
-              onArrive={onArriveCustomer}
-              bubbleItem={
-                acceptedOrder ? undefined : customers[0].order.items[0]
-              }
-              onAcceptOrder={() => {
-                setAcceptedOrder(true);
-                useGameStore.getState().resetRoundTimer();
-              }}
-              reaction={reaction}
-              coinText={coinText}
-              coinAnim={coinAnim}
-            />
+            <View style={acceptedOrder ? { marginTop: -20 } : undefined}>
+              <CustomerWalker
+                key={customers[0].id}
+                customer={customers[0]}
+                onArrive={onArriveCustomer}
+                bubbleItem={
+                  acceptedOrder ? undefined : customers[0].order.items[0]
+                }
+                onAcceptOrder={() => {
+                  setAcceptedOrder(true);
+                  useGameStore.getState().resetRoundTimer();
+                }}
+                reaction={reaction}
+                coinText={coinText}
+                coinAnim={coinAnim}
+              />
+            </View>
             {acceptedOrder && (
               <View style={styles.row}>
                 <Text style={styles.hint}>
@@ -434,7 +439,7 @@ function GameScreen(): React.ReactElement {
               </ScrollView>
             )}
             {acceptedOrder && (
-              <View style={styles.row}>
+              <View style={[styles.row, { marginTop: 4 }]}>
                 <Text style={styles.hint}>Bạn đã chọn:</Text>
               </View>
             )}
@@ -586,36 +591,43 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 10,
     borderRadius: 12,
-    marginHorizontal: 4,
+    marginHorizontal: 6,
   },
   categoryChipActive: {
     backgroundColor: '#8B4513',
     paddingVertical: 6,
     paddingHorizontal: 10,
     borderRadius: 12,
-    marginHorizontal: 4,
+    marginHorizontal: 6,
   },
   categoryText: { color: '#3B2F2F' },
   ingredientsScroll: { paddingHorizontal: 12, marginTop: 6 },
   chip: {
     backgroundColor: '#E6D5B8',
-    paddingVertical: 10,
+    paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: 16,
     margin: 4,
-    minWidth: 92,
+    minWidth: 88,
     alignItems: 'center',
     justifyContent: 'center',
   },
   chipSelected: {
     backgroundColor: '#8B4513',
-    paddingVertical: 10,
+    paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: 16,
     margin: 4,
-    minWidth: 92,
+    minWidth: 88,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#8A542F',
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   chipScaleSelected: { transform: [{ scale: 1.05 }] },
   chipHint: { borderWidth: 1, borderColor: '#8B4513' },
@@ -623,14 +635,16 @@ const styles = StyleSheet.create({
   chipText: { color: '#3B2F2F', fontWeight: '500' },
   chipTextSelected: { color: '#FFF8E1', fontWeight: '600' },
 
-  selectedRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 6 },
+  selectedRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 0 },
   selectedChip: {
     backgroundColor: '#FFF8E1',
     borderRadius: 16,
-    marginHorizontal: 4,
+    marginHorizontal: 8,
     padding: 6,
+    borderWidth: 1,
+    borderColor: '#D2B48C',
   },
-  selectedImage: { width: 24, height: 24 },
+  selectedImage: { width: 32, height: 32 },
 });
 
 export default GameScreen;
