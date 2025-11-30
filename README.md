@@ -95,3 +95,19 @@ To learn more about React Native, take a look at the following resources:
 - [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
 - [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
 - [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+## Assets (Pixel Art Vintage)
+
+Place your item images under `assets/images/` and reference them via a simple registry. This project currently uses placeholder URLs in `src/game/assets.ts`.
+
+- Recommended structure: `assets/images/<item_id>.png` (e.g., `cafe_vot.png`, `banh_mi_thit.png`)
+- Update the `imageUri` field in `src/game/assets.ts` to your CDN/local file scheme.
+- Pixel art size: 32–64px with a vintage Saigon/Hanoi palette works well.
+
+Vintage items in recipes: `cafe_vot`, `sua_dau_nanh`, `banh_mi_thit`, `che`, `xien_que`, `banh_bo`, `soda_da_chanh`.
+
+You can swap remote URLs with local requires once icons are added:
+
+```ts
+// assets.ts (example)
+imageUri: Image.resolveAssetSource(require('../../assets/images/cafe_vot.png')).uri
+```

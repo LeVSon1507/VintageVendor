@@ -1,0 +1,29 @@
+export const translations = {
+  vi: {
+    start: 'Bắt đầu',
+    settings: 'Cài đặt',
+    leaderboard: 'Bảng xếp hạng',
+    pause: 'Tạm dừng',
+    retry: 'Chơi lại',
+    home: 'Về Trang chủ',
+    time: '⏱',
+    score: '⭐',
+    customers: '👥',
+    appTitle: 'Vintage Vendor',
+    appSubtitle: 'Saigon/Hanoi • 80s–90s',
+  },
+  en: {
+    start: 'Start',
+    settings: 'Settings',
+    leaderboard: 'Leaderboard',
+    pause: 'Pause',
+    retry: 'Retry',
+    home: 'Home',
+    time: '⏱',
+    score: '⭐',
+    customers: '👥',
+    appTitle: 'Vintage Vendor',
+    appSubtitle: 'Saigon/Hanoi • 80s–90s',
+  },
+} as const;
+
