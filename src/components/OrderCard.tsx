@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Image } from 'react-native';
 import { Order } from '../types';
+import { t } from '../i18n';
 import { getItemImage } from '../game/assets';
 
 type OrderCardProps = {
@@ -14,7 +15,7 @@ function OrderCard(props: OrderCardProps): React.ReactElement {
 
   return (
     <View style={styles.card}>
-      <Text style={compact ? styles.titleSm : styles.title}>Đơn hàng</Text>
+      <Text style={compact ? styles.titleSm : styles.title}>{t('orderTitle')}</Text>
       {order.items.map(function renderItem(item) {
         return (
           <View
@@ -39,7 +40,7 @@ function OrderCard(props: OrderCardProps): React.ReactElement {
               </View>
               {item.requirements && item.requirements.length > 0 ? (
                 <View style={styles.requirementRowUnderName}>
-                  <Text style={styles.requirementLabelSmall}>Yêu cầu:</Text>
+                  <Text style={styles.requirementLabelSmall}>{t('requirementLabel')}</Text>
                   {item.requirements.map(function renderReq(req) {
                     return (
                       <View key={req} style={styles.requirementPillSmall}>
@@ -67,13 +68,9 @@ function OrderCard(props: OrderCardProps): React.ReactElement {
         );
       })}
       <View style={styles.footerRow}>
-        <Text style={compact ? styles.totalSm : styles.total}>
-          Tổng: {order.totalPrice}₫
-        </Text>
+        <Text style={compact ? styles.totalSm : styles.total}>{t('totalLabel')} {order.totalPrice}₫</Text>
         <Text style={compact ? styles.limitSm : styles.limit}>
-          {typeof remaining === 'number'
-            ? `Còn lại: ${remaining}s`
-            : `Giới hạn: ${order.timeLimit}s`}
+          {typeof remaining === 'number' ? `${t('remainingLabel')} ${remaining}s` : `${t('limitLabel')} ${order.timeLimit}s`}
         </Text>
       </View>
     </View>

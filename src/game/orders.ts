@@ -7,9 +7,13 @@ export type OrderOptions = {
   seed?: number;
   excludeItemIds?: string[];
   customerType?: Customer['type'];
+  forceRecipeId?: string;
 };
 
 function pickRecipeId(options: OrderOptions): string {
+  if (options.forceRecipeId) {
+    return options.forceRecipeId;
+  }
   const exclude = new Set(options.excludeItemIds ?? []);
   const candidates = RECIPE_CATALOG.filter(function allow(r) {
     return !exclude.has(r.id);
@@ -20,7 +24,11 @@ function pickRecipeId(options: OrderOptions): string {
   return chosen.id;
 }
 
-function generateRequirements(id: string, seed?: number, customerType?: Customer['type']): string[] {
+function generateRequirements(
+  id: string,
+  seed?: number,
+  customerType?: Customer['type'],
+): string[] {
   const pool: Record<string, string[]> = {
     soda_da_chanh: ['Ít đá', 'Thêm chanh'],
     soda_chai: ['Ướp lạnh', 'Không đá'],
@@ -30,7 +38,7 @@ function generateRequirements(id: string, seed?: number, customerType?: Customer
     ca_vien_chien: ['Không rau', 'Thêm dưa leo'],
     banh_mi_thit: ['Ít tương ớt', 'Thêm đồ chua'],
     che: ['Ít ngọt', 'Thêm đá'],
-    cafe_vot: ['Ít ngọt', 'Nóng', 'Lạnh'],
+    cafe_vot: ['Nóng', 'Lạnh'],
     sua_dau_nanh: ['Ít ngọt', 'Nóng', 'Lạnh', 'Thêm đá'],
   };
   const base = pool[id] ?? [];
@@ -42,35 +50,65 @@ function generateRequirements(id: string, seed?: number, customerType?: Customer
   });
   const picked = shuffled.slice(0, count);
   if (customerType === 'elderly') {
-    if (id === 'xien_que_tuong_ot' && !picked.includes('Không cay')) picked.push('Không cay');
+    if (id === 'xien_que_tuong_ot' && !picked.includes('Không cay'))
+      picked.push('Không cay');
     if (id === 'cafe_vot' && !picked.includes('Nóng')) picked.push('Nóng');
     if (id === 'sua_dau_nanh' && !picked.includes('Nóng')) picked.push('Nóng');
   }
   if (customerType === 'student') {
-    if ((id === 'soda_da_chanh' || id === 'soda_chai' || id === 'sua_dau_nanh') && !picked.includes('Thêm đá')) picked.push('Thêm đá');
-    if (id.startsWith('xien_que') && !picked.includes('Cay')) picked.push('Cay');
+    if (
+      (id === 'soda_da_chanh' || id === 'soda_chai' || id === 'sua_dau_nanh') &&
+      !picked.includes('Thêm đá')
+    )
+      picked.push('Thêm đá');
+    if (id.startsWith('xien_que') && !picked.includes('Cay'))
+      picked.push('Cay');
   }
   return Array.from(new Set(picked));
 }
 
 function getIngredientByIdLocal(id: string): Ingredient | undefined {
-  const rec = RECIPE_CATALOG.find(r => r.ingredients.some(ing => ing.id === id));
+  const rec = RECIPE_CATALOG.find(r =>
+    r.ingredients.some(ing => ing.id === id),
+  );
   if (rec) {
     const found = rec.ingredients.find(ing => ing.id === id);
     if (found) return found;
   }
   // Fallback minimal definitions
   const fallback: Record<string, Ingredient> = {
-    da_vien: { id: 'da_vien', name: 'Đá viên', type: 'solid', quantity: 6, unit: 'piece' },
-    tuong_ot: { id: 'tuong_ot', name: 'Tương ớt', type: 'liquid', quantity: 10, unit: 'ml' },
+    da_vien: {
+      id: 'da_vien',
+      name: 'Đá viên',
+      type: 'solid',
+      quantity: 6,
+      unit: 'piece',
+    },
+    tuong_ot: {
+      id: 'tuong_ot',
+      name: 'Tương ớt',
+      type: 'liquid',
+      quantity: 10,
+      unit: 'ml',
+    },
     tieu: { id: 'tieu', name: 'Tiêu', type: 'powder', quantity: 2, unit: 'g' },
     muoi: { id: 'muoi', name: 'Muối', type: 'powder', quantity: 2, unit: 'g' },
-    nuoc_soi: { id: 'nuoc_soi', name: 'Nước sôi', type: 'liquid', quantity: 150, unit: 'ml' },
+    nuoc_soi: {
+      id: 'nuoc_soi',
+      name: 'Nước sôi',
+      type: 'liquid',
+      quantity: 150,
+      unit: 'ml',
+    },
   };
   return fallback[id];
 }
 
-function adjustIngredientsForRequirements(id: string, base: Ingredient[], requirements: string[]): Ingredient[] {
+function adjustIngredientsForRequirements(
+  id: string,
+  base: Ingredient[],
+  requirements: string[],
+): Ingredient[] {
   let result = [...base];
   function ensureIngredient(ingId: string): void {
     if (!result.some(i => i.id === ingId)) {
@@ -85,10 +123,23 @@ function adjustIngredientsForRequirements(id: string, base: Ingredient[], requir
     if (requirements.includes('Lạnh') || requirements.includes('Thêm đá')) {
       ensureIngredient('da_vien');
     }
+    if (requirements.includes('Đen đá')) {
+      removeIngredient('bot_ca_phe');
+      removeIngredient('duong');
+      removeIngredient('nuoc_soi');
+      ensureIngredient('da_vien');
+    }
+    if (requirements.includes('Nâu đá')) {
+      ensureIngredient('da_vien');
+      removeIngredient('dau_nanh');
+    }
   }
   if (id === 'sua_dau_nanh') {
     if (requirements.includes('Lạnh') || requirements.includes('Thêm đá')) {
       ensureIngredient('da_vien');
+    }
+    if (requirements.includes('Nâu đá')) {
+      removeIngredient('dau_nanh');
     }
   }
   if (id === 'xien_que') {
@@ -113,12 +164,26 @@ function adjustIngredientsForRequirements(id: string, base: Ingredient[], requir
 
 export function generateOrderItem(options: OrderOptions): OrderItem {
   const recipeId = pickRecipeId(options);
-  const recipe = RECIPE_CATALOG.find(r => r.id === recipeId) ?? RECIPE_CATALOG[0];
+  const recipe =
+    RECIPE_CATALOG.find(r => r.id === recipeId) ?? RECIPE_CATALOG[0];
   const base = toOrderItem(recipe);
 
-  const multiplier = options.difficulty === 'easy' ? 0.9 : options.difficulty === 'hard' ? 1.15 : 1.0;
-  const reqs = generateRequirements(recipe.id, options.seed, options.customerType);
-  const adjustedIngredients = adjustIngredientsForRequirements(recipe.id, base.ingredients, reqs);
+  const multiplier =
+    options.difficulty === 'easy'
+      ? 0.9
+      : options.difficulty === 'hard'
+      ? 1.15
+      : 1.0;
+  const reqs = generateRequirements(
+    recipe.id,
+    options.seed,
+    options.customerType,
+  );
+  const adjustedIngredients = adjustIngredientsForRequirements(
+    recipe.id,
+    base.ingredients,
+    reqs,
+  );
   return {
     ...base,
     price: Math.round(base.price * multiplier),
@@ -134,14 +199,21 @@ export function generateOrder(options: OrderOptions): Order {
   const picked = new Set<string>();
   for (let i = 0; i < itemCount; i++) {
     const nextSeed = (options.seed ?? Date.now()) + i;
-    const item = generateOrderItem({ ...options, seed: nextSeed, excludeItemIds: [...(options.excludeItemIds ?? []), ...picked] });
+    const forceId = i === 0 ? options.forceRecipeId : undefined;
+    const item = generateOrderItem({ ...options, seed: nextSeed, excludeItemIds: [...(options.excludeItemIds ?? []), ...picked], forceRecipeId: forceId });
     items.push(item);
     picked.add(item.id);
   }
 
   const totalPrice = items.reduce((sum, current) => sum + current.price, 0);
-  const complexity = items.reduce((sum, current) => sum + current.ingredients.length, 0);
-  const timeLimit = Math.max(25, items.reduce((sum, current) => sum + current.preparationTime, 0) + 10);
+  const complexity = items.reduce(
+    (sum, current) => sum + current.ingredients.length,
+    0,
+  );
+  const timeLimit = Math.max(
+    25,
+    items.reduce((sum, current) => sum + current.preparationTime, 0) + 10,
+  );
 
   return {
     id: `order_${Date.now()}`,

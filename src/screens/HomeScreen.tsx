@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { getStallImage } from '../game/assets';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import useGameStore from '../store/gameStore';
@@ -12,6 +13,8 @@ type HomeScreenNavigation = StackNavigationProp<RootStackParamList, 'Home'>;
 function HomeScreen(): React.ReactElement {
   const navigation = useNavigation<HomeScreenNavigation>();
   const startGame = useGameStore(state => state.startGame);
+  const settings = useGameStore(state => state.settings);
+  const updateSettings = useGameStore(state => state.updateSettings);
 
   function handleStart(): void {
     startGame();
@@ -31,6 +34,12 @@ function HomeScreen(): React.ReactElement {
       <View style={styles.header}>
         <Text style={styles.title}>{t('appTitle')}</Text>
         <Text style={styles.subtitle}>{t('appSubtitle')}</Text>
+        <TouchableOpacity
+          style={styles.langToggle}
+          onPress={() => updateSettings({ language: settings.language === 'vi' ? 'en' : 'vi' })}
+        >
+          <Text style={styles.langToggleText}>{settings.language === 'vi' ? 'EN' : 'VI'}</Text>
+        </TouchableOpacity>
       </View>
       <View style={styles.actions}>
         <Image
@@ -57,7 +66,7 @@ function HomeScreen(): React.ReactElement {
         </View>
       </View>
       <View style={styles.footer}>
-        <Text style={styles.footerText}>Aiiiiiii • tạp hoá đeeeeee</Text>
+        <Text style={styles.footerText}>{t('slogan')}</Text>
       </View>
     </SafeAreaView>
   );
@@ -66,6 +75,8 @@ function HomeScreen(): React.ReactElement {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5DC' },
   header: { paddingTop: 24, paddingHorizontal: 24 },
+  langToggle: { position: 'absolute', right: 24, top: 24, backgroundColor: '#E6D5B8', paddingVertical: 6, paddingHorizontal: 10, borderRadius: 12 },
+  langToggleText: { color: '#3B2F2F', fontWeight: '600' },
   title: { fontSize: 28, fontWeight: '700', color: '#3B2F2F' },
   subtitle: { fontSize: 14, color: '#6B5B5B', marginTop: 4 },
   actions: {
@@ -100,4 +111,3 @@ const styles = StyleSheet.create({
 });
 
 export default HomeScreen;
-import { getStallImage } from '../game/assets';

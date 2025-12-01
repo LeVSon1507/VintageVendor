@@ -19,6 +19,7 @@ import { INGREDIENT_CATALOG } from '../game/ingredients';
 import { getIngredientImage, getStallImage } from '../game/assets';
 import { compileSelectedDish } from '../game/combine';
 import CustomerWalker from '../components/CustomerWalker';
+import PauseBanner from '../components/PauseBanner';
 import {
   startAmbient,
   stopAmbient,
@@ -27,7 +28,8 @@ import {
   playServeFail,
   playClick,
 } from '../audio/soundManager';
-import { INGREDIENT_CATEGORIES, CATEGORY_LABELS } from '../game/categories';
+import { INGREDIENT_CATEGORIES } from '../game/categories';
+import { t } from '../i18n';
 
 type GameScreenNavigation = StackNavigationProp<RootStackParamList, 'Game'>;
 
@@ -96,7 +98,7 @@ function GameScreen(): React.ReactElement {
   useEffect(function autoSpawnLoop() {
     const interval = setInterval(function tick() {
       const state = useGameStore.getState();
-      if (state.customers.length < 5) {
+      if (!state.isPaused && state.customers.length < 5) {
         state.spawnCustomerWithOrder();
       }
     }, 8000);
@@ -125,7 +127,8 @@ function GameScreen(): React.ReactElement {
   );
 
   function handlePause(): void {
-    navigation.navigate('Settings');
+    const act = useGameStore.getState().pauseGame;
+    act();
   }
 
   function handleSpawn(): void {
@@ -146,6 +149,8 @@ function GameScreen(): React.ReactElement {
   const [acceptedOrder, setAcceptedOrder] = useState<boolean>(false);
   const [activeCategory, setActiveCategory] = useState<string>('base');
   const stallAnim = useRef(new Animated.Value(0)).current;
+  const isPaused = useGameStore(state => state.isPaused);
+  const resumeGame = useGameStore(state => state.resumeGame);
 
   useEffect(
     function startTimer() {
@@ -317,9 +322,7 @@ function GameScreen(): React.ReactElement {
               ]}
               resizeMode="contain"
             />
-            <Text style={styles.hint}>
-              Khách sẽ tự ghé quầy trong chốc lát...
-            </Text>
+            <Text style={styles.hint}>{t('hintAwaitCustomer')}</Text>
           </>
         ) : (
           <>
@@ -340,6 +343,14 @@ function GameScreen(): React.ReactElement {
               ]}
               resizeMode="contain"
             />
+            {isPaused ? (
+              <View style={styles.pauseOverlay} pointerEvents="auto">
+                <PauseBanner
+                  onResume={() => resumeGame()}
+                  onHome={() => navigation.navigate('Home')}
+                />
+              </View>
+            ) : null}
             {acceptedOrder ? (
               <OrderCard
                 order={customers[0].order}
@@ -366,9 +377,7 @@ function GameScreen(): React.ReactElement {
             </View>
             {acceptedOrder && (
               <View style={styles.row}>
-                <Text style={styles.hint}>
-                  Chọn nguyên liệu cho món đầu tiên:
-                </Text>
+                <Text style={styles.hint}>{t('selectIngredientsFirst')}</Text>
               </View>
             )}
             {acceptedOrder && (
@@ -377,6 +386,13 @@ function GameScreen(): React.ReactElement {
                   key,
                 ) {
                   const isActive = activeCategory === key;
+                  const labelMap: Record<string, string> = {
+                    base: t('categoryBase'),
+                    protein: t('categoryProtein'),
+                    liquid: t('categoryLiquid'),
+                    topping: t('categoryTopping'),
+                    spices: t('categorySpices'),
+                  };
                   return (
                     <TouchableOpacity
                       key={key}
@@ -387,9 +403,7 @@ function GameScreen(): React.ReactElement {
                       }
                       onPress={() => setActiveCategory(key)}
                     >
-                      <Text style={styles.categoryText}>
-                        {CATEGORY_LABELS[key as keyof typeof CATEGORY_LABELS]}
-                      </Text>
+                      <Text style={styles.categoryText}>{labelMap[key]}</Text>
                     </TouchableOpacity>
                   );
                 })}
@@ -440,7 +454,7 @@ function GameScreen(): React.ReactElement {
             )}
             {acceptedOrder && (
               <View style={[styles.row, { marginTop: 4 }]}>
-                <Text style={styles.hint}>Bạn đã chọn:</Text>
+                <Text style={styles.hint}>{t('youSelected')}</Text>
               </View>
             )}
             {acceptedOrder && (
@@ -464,13 +478,17 @@ function GameScreen(): React.ReactElement {
                   style={styles.sampleButtonPrimary}
                   onPress={handleServe}
                 >
-                  <Text style={styles.sampleButtonText}>Giao món</Text>
+                  <Text style={styles.sampleButtonText}>
+                    {t('deliverDish')}
+                  </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.secondaryButtonSmall}
                   onPress={handleServeWrong}
                 >
-                  <Text style={styles.secondaryButtonText}>Chọn lại</Text>
+                  <Text style={styles.secondaryButtonText}>
+                    {t('selectAgain')}
+                  </Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -479,7 +497,7 @@ function GameScreen(): React.ReactElement {
       </View>
       <View style={styles.bottomBar}>
         <TouchableOpacity style={styles.secondaryButton} onPress={handlePause}>
-          <Text style={styles.secondaryButtonText}>Tạm dừng</Text>
+          <Text style={styles.secondaryButtonText}>{t('pause')}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -645,6 +663,17 @@ const styles = StyleSheet.create({
     borderColor: '#D2B48C',
   },
   selectedImage: { width: 32, height: 32 },
+  pauseOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 999,
+    elevation: 12,
+  },
 });
 
 export default GameScreen;

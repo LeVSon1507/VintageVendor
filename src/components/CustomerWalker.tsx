@@ -196,7 +196,9 @@ function CustomerWalker(props: CustomerWalkerProps): React.ReactElement {
             style={styles.bubbleButton}
             onPress={() => onAcceptOrder && onAcceptOrder(customer.id)}
           >
-            <Text style={styles.bubbleButtonText}>Nhận order</Text>
+            <Text style={styles.bubbleButtonText}>
+              {require('../i18n').t('acceptOrder')}
+            </Text>
           </TouchableOpacity>
           <View style={styles.bubblePointer} />
         </Animated.View>

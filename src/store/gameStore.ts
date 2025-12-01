@@ -39,10 +39,11 @@ interface GameStore {
   error: string | null;
   showSettings: boolean;
   showLeaderboard: boolean;
-  lastRecipeId?: string;
+  recentRecipeIds: string[];
   sessionCoins: number;
   highCoins: number;
   leaderboard: LeaderboardEntry[];
+  recipeQueue: string[];
 
   // Actions
   setGameState: (state: GameState) => void;
@@ -144,16 +145,18 @@ const useGameStore = create<GameStore>()(
       error: null,
       showSettings: false,
       showLeaderboard: false,
-      lastRecipeId: undefined,
+      recentRecipeIds: [],
       sessionCoins: 0,
       highCoins: 0,
       leaderboard: [],
+      recipeQueue: [],
 
       // Actions
       setGameState: state => set({ gameState: state }),
 
       startGame: () => {
         const state = get();
+        const { RECIPE_CATALOG } = require('../game/recipes');
         set({
           gameState: 'playing',
           currentScore: 0,
@@ -169,10 +172,11 @@ const useGameStore = create<GameStore>()(
           isPaused: false,
           customers: [],
           dragItems: [],
-          lastRecipeId: undefined,
+          recentRecipeIds: [],
           level: 1,
           exp: 0,
           sessionCoins: 0,
+          recipeQueue: RECIPE_CATALOG.map((r: any) => r.id),
         });
       },
 
@@ -211,10 +215,18 @@ const useGameStore = create<GameStore>()(
         if (state.customers.length >= 5) return;
         const { createCustomer } = require('../game/customers');
         const { generateOrder } = require('../game/orders');
+        const { RECIPE_CATALOG } = require('../game/recipes');
         const customer = createCustomer();
-        const order = generateOrder({ difficulty: state.settings.difficulty, excludeItemIds: state.lastRecipeId ? [state.lastRecipeId] : [], customerType: customer.type });
+        const queue = state.recipeQueue && state.recipeQueue.length > 0 ? state.recipeQueue : RECIPE_CATALOG.map((r: any) => r.id);
+        const forceId = queue[0];
+        const nextQueue = forceId ? [...queue.slice(1), forceId] : queue;
+        const currentIds = state.customers.map(c => c.order.items[0]?.id).filter(Boolean);
+        const exclude = Array.from(new Set([...(state.recentRecipeIds || []), ...currentIds]));
+        const order = generateOrder({ difficulty: state.settings.difficulty, excludeItemIds: exclude, customerType: customer.type, forceRecipeId: forceId });
         const withOrder = { ...customer, order };
-        set({ customers: [...state.customers, withOrder], lastRecipeId: order.items[0]?.id });
+        const firstId = order.items[0]?.id;
+        const nextRecent = firstId ? Array.from(new Set([firstId, ...state.recentRecipeIds])).slice(0, 3) : state.recentRecipeIds;
+        set({ customers: [...state.customers, withOrder], recentRecipeIds: nextRecent, recipeQueue: nextQueue });
       },
 
       serveCurrentCustomerCorrect: () => {
@@ -356,6 +368,7 @@ const useGameStore = create<GameStore>()(
       setTimeRemaining: time => set({ timeRemaining: time }),
       decrementTime: () => {
         const state = get();
+        if (state.isPaused) return;
         set({ timeRemaining: Math.max(0, state.timeRemaining - 1) });
       },
 
