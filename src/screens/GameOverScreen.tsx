@@ -4,6 +4,7 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../types';
 import useGameStore from '../store/gameStore';
+import { t } from '../i18n';
 
 type GameOverRoute = RouteProp<RootStackParamList, 'GameOver'>;
 type GameOverNav = StackNavigationProp<RootStackParamList, 'GameOver'>;
@@ -27,15 +28,19 @@ function GameOverScreen(): React.ReactElement {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Hết giờ!</Text>
-      <Text style={styles.score}>Điểm: {route.params.score}</Text>
-      <Text style={styles.score}>Khách: {route.params.customersServed}</Text>
+      <Text style={styles.title}>{t('timeUpTitle')}</Text>
+      <Text style={styles.score}>
+        {t('scoreLabelText')} {route.params.score}
+      </Text>
+      <Text style={styles.score}>
+        {t('customersLabelText')} {route.params.customersServed}
+      </Text>
       <View style={styles.row}>
         <TouchableOpacity style={styles.primaryButton} onPress={handleRetry}>
-          <Text style={styles.primaryText}>Chơi lại</Text>
+          <Text style={styles.primaryText}>{t('retry')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.secondaryButton} onPress={handleHome}>
-          <Text style={styles.secondaryText}>Về Trang chủ</Text>
+          <Text style={styles.secondaryText}>{t('home')}</Text>
         </TouchableOpacity>
       </View>
     </View>

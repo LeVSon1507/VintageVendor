@@ -1,12 +1,32 @@
 import React, { useMemo } from 'react';
-import { Text, StyleSheet, View, ScrollView } from 'react-native';
+import {
+  Text,
+  StyleSheet,
+  View,
+  ScrollView,
+  TouchableOpacity,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { RootStackParamList } from '../types';
+import { t } from '../i18n';
 import useGameStore from '../store/gameStore';
+import { getItemName } from '../i18n/names';
+
+type JournalNav = StackNavigationProp<RootStackParamList, 'Leaderboard'>;
 
 function JournalScreen(): React.ReactElement {
+  const navigation = useNavigation<JournalNav>();
   const journal = useGameStore(state => state.journal);
   const journeyDay = useGameStore(state => state.journeyDay);
   const stats = useGameStore(state => state.stats);
+  const resetGame = useGameStore(state => state.resetGame);
+
+  function handleHome(): void {
+    resetGame();
+    navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+  }
 
   const mostFrequentCustomer = useMemo(
     function calcTopCustomer() {
@@ -48,20 +68,7 @@ function JournalScreen(): React.ReactElement {
         return (b[1] || 0) - (a[1] || 0);
       });
       const top = sorted[0];
-      const nameMap: Record<string, string> = {
-        cafe_vot: 'Cà phê vợt',
-        sua_dau_nanh: 'Sữa đậu nành',
-        banh_mi_thit: 'Bánh mì thịt',
-        che: 'Chè',
-        xien_que: 'Xiên que',
-        banh_bo: 'Bánh bò',
-        soda_da_chanh: 'Soda đá chanh',
-        soda_chai: 'Soda chai',
-        xien_que_tuong_ot: 'Xiên que tương ớt',
-        ca_vien_chien: 'Cá viên chiên',
-        soda_chanh_muoi: 'Soda chanh muối',
-      };
-      const label = nameMap[top[0]] || top[0];
+      const label = getItemName(top[0]);
       return `${label} (${top[1]})`;
     },
     [stats],
@@ -70,21 +77,26 @@ function JournalScreen(): React.ReactElement {
   const notes =
     stats && stats.randomNotes && stats.randomNotes.length > 0
       ? stats.randomNotes
-      : [
-          'Hôm nay trời đẹp!',
-          'Khách khen quầy sạch sẽ',
-          'Một vị khách nhớ hương vị tuổi thơ',
-        ];
+      : [t('noteDefault1'), t('noteDefault2'), t('noteDefault3')];
 
   return (
     <SafeAreaView style={styles.container}>
+      <View style={styles.topBar}>
+        <TouchableOpacity
+          style={styles.pill}
+          onPress={handleHome}
+          accessibilityLabel={t('home')}
+        >
+          <Text style={styles.pillText}>{t('home')}</Text>
+        </TouchableOpacity>
+      </View>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.title}>Nhật kí tiệm</Text>
+        <Text style={styles.title}>{t('journalTitle')}</Text>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Milestone</Text>
+          <Text style={styles.sectionTitle}>{t('milestoneTitle')}</Text>
           <Text style={styles.sectionSub}>
-            Ngày hiện tại: {journeyDay || 0}
+            {t('currentDayLabel')} {journeyDay || 0}
           </Text>
           {(journal || [])
             .slice()
@@ -103,7 +115,7 @@ function JournalScreen(): React.ReactElement {
                         : styles.entryPending
                     }
                   >
-                    {entry.achieved ? 'Đã đạt' : 'Chưa đạt'}
+                    {entry.achieved ? t('achieved') : t('pending')}
                   </Text>
                 </View>
               );
@@ -111,29 +123,33 @@ function JournalScreen(): React.ReactElement {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Thống kê vui</Text>
+          <Text style={styles.sectionTitle}>{t('funStatsTitle')}</Text>
           <View style={styles.statRow}>
-            <Text style={styles.statLabel}>Khách hay mua nhất:</Text>
+            <Text style={styles.statLabel}>
+              {t('mostFrequentCustomerLabel')}
+            </Text>
             <Text style={styles.statValue}>{mostFrequentCustomer}</Text>
           </View>
           <View style={styles.statRow}>
-            <Text style={styles.statLabel}>Item bán chạy số 1:</Text>
+            <Text style={styles.statLabel}>{t('bestSellingItemLabel')}</Text>
             <Text style={styles.statValue}>{bestSellingItem}</Text>
           </View>
           <View style={styles.statRow}>
-            <Text style={styles.statLabel}>Số lần hết hàng:</Text>
+            <Text style={styles.statLabel}>{t('outOfStockCountLabel')}</Text>
             <Text style={styles.statValue}>
               {(stats && stats.outOfStockCount) || 0}
             </Text>
           </View>
           <View style={styles.statRow}>
-            <Text style={styles.statLabel}>Tổng lượng soda chai bán:</Text>
+            <Text style={styles.statLabel}>{t('totalSodaChaiSoldLabel')}</Text>
             <Text style={styles.statValue}>
-              {(stats && stats.totalSodaChaiSold) || 0} chai
+              {(stats && stats.totalSodaChaiSold) || 0} {t('unitBottle')}
             </Text>
           </View>
           <View style={styles.statRow}>
-            <Text style={styles.statLabel}>Số tiền kiếm được phiên này:</Text>
+            <Text style={styles.statLabel}>
+              {t('coinsEarnedThisSessionLabel')}
+            </Text>
             <Text style={styles.statValue}>
               💰 {(stats && stats.coinsEarnedThisSession) || 0}
             </Text>
@@ -141,7 +157,7 @@ function JournalScreen(): React.ReactElement {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Ghi chú nho nhỏ</Text>
+          <Text style={styles.sectionTitle}>{t('notesTitle')}</Text>
           {notes.map(function renderNote(n, i) {
             return (
               <Text key={`${n}-${i}`} style={styles.noteItem}>
@@ -157,6 +173,12 @@ function JournalScreen(): React.ReactElement {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5DC' },
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+  },
   scrollContent: { padding: 16 },
   title: { fontSize: 24, fontWeight: '700', color: '#3B2F2F', marginBottom: 8 },
   section: {
@@ -188,6 +210,13 @@ const styles = StyleSheet.create({
   statLabel: { color: '#3B2F2F' },
   statValue: { color: '#3B2F2F', fontWeight: '700' },
   noteItem: { color: '#3B2F2F' },
+  pill: {
+    backgroundColor: '#D2B48C',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+  },
+  pillText: { color: '#3B2F2F', fontWeight: '600' },
 });
 
 export default JournalScreen;

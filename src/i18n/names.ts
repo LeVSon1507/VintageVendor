@@ -82,6 +82,23 @@ const INGREDIENT_NAMES: Record<'vi' | 'en', Record<string, string>> = {
   },
 };
 
+const STORE_ITEM_NAMES: Record<'vi' | 'en', Record<string, string>> = {
+  vi: {
+    retro_radio: 'Radio retro',
+    neon_light: 'Đèn neon',
+    vintage_tables: 'Bàn ghế vintage',
+    sign_vintage: 'Biển hiệu cổ điển',
+    premium_cart: 'Xe đẩy cao cấp',
+  },
+  en: {
+    retro_radio: 'Retro radio',
+    neon_light: 'Neon light',
+    vintage_tables: 'Vintage tables',
+    sign_vintage: 'Vintage sign',
+    premium_cart: 'Premium cart',
+  },
+};
+
 export function getItemName(id: string): string {
   const lang = useGameStore.getState().settings.language;
   return ITEM_NAMES[lang][id] ?? ITEM_NAMES.vi[id] ?? id;
@@ -92,3 +109,7 @@ export function getIngredientName(id: string): string {
   return INGREDIENT_NAMES[lang][id] ?? INGREDIENT_NAMES.vi[id] ?? id;
 }
 
+export function getStoreItemName(id: string): string {
+  const lang = useGameStore.getState().settings.language;
+  return STORE_ITEM_NAMES[lang][id] ?? STORE_ITEM_NAMES.vi[id] ?? id;
+}

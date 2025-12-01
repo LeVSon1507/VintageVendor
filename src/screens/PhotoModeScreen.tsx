@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { t } from '../i18n';
 
 function PhotoModeScreen(): React.ReactElement {
   const navigation = useNavigation();
@@ -12,10 +13,10 @@ function PhotoModeScreen(): React.ReactElement {
   return (
     <View style={styles.container}>
       <View style={styles.panel}>
-        <Text style={styles.title}>Photo Mode</Text>
-        <Text style={styles.hint}>Chế độ chụp ảnh sẽ cập nhật sau — placeholder</Text>
+        <Text style={styles.title}>{t('photoModeTitle')}</Text>
+        <Text style={styles.hint}>{t('photoModeHint')}</Text>
         <TouchableOpacity style={styles.button} onPress={handleClose}>
-          <Text style={styles.buttonText}>Đóng</Text>
+          <Text style={styles.buttonText}>{t('close')}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -32,4 +33,3 @@ const styles = StyleSheet.create({
 });
 
 export default PhotoModeScreen;
-

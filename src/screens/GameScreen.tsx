@@ -56,6 +56,7 @@ function GameScreen(): React.ReactElement {
   const exp = useGameStore(state => state.exp);
   const energy = useGameStore(state => state.energy);
   const maxEnergy = useGameStore(state => state.maxEnergy);
+  const resetGame = useGameStore(state => state.resetGame);
 
   const intervalRef = useRef<number | null>(null);
 
@@ -544,16 +545,20 @@ function GameScreen(): React.ReactElement {
                     style={[styles.secondaryButtonSmall, styles.fullButton]}
                     onPress={handleResetSelection}
                   >
-                    <Text style={styles.secondaryButtonText}>Chọn lại</Text>
+                    <Text style={styles.secondaryButtonText}>
+                      {t('selectAgain')}
+                    </Text>
                   </TouchableOpacity>
                 </View>
                 <View style={styles.actionItem}>
                   <TouchableOpacity
                     style={[styles.secondaryButtonSmall, styles.fullButton]}
                     onPress={() => {}}
-                    accessibilityLabel="Công thức"
+                    accessibilityLabel={t('recipes')}
                   >
-                    <Text style={styles.secondaryButtonText}>📜 Công thức</Text>
+                    <Text style={styles.secondaryButtonText}>
+                      📜 {t('recipes')}
+                    </Text>
                   </TouchableOpacity>
                 </View>
                 <View style={styles.actionItem}>
@@ -562,7 +567,7 @@ function GameScreen(): React.ReactElement {
                     onPress={handleHint}
                   >
                     <Text style={styles.secondaryButtonText}>
-                      💡 Gợi ý (x{dailyFreeHints})
+                      💡 {t('hint')} (x{dailyFreeHints})
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -574,7 +579,7 @@ function GameScreen(): React.ReactElement {
       {acceptedOrder ? (
         <View style={styles.bottomBar}>
           <TouchableOpacity style={styles.deliverButton} onPress={handleServe}>
-            <Text style={styles.sampleButtonText}>Giao món</Text>
+            <Text style={styles.sampleButtonText}>{t('deliverDish')}</Text>
           </TouchableOpacity>
         </View>
       ) : null}
@@ -583,7 +588,10 @@ function GameScreen(): React.ReactElement {
           <View style={styles.globalDim} />
           <PauseBanner
             onResume={() => resumeGame()}
-            onHome={() => navigation.navigate('Home')}
+            onHome={() => {
+              resetGame();
+              navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+            }}
           />
         </View>
       ) : null}
