@@ -153,6 +153,11 @@ function GameScreen(): React.ReactElement {
   const stallAnim = useRef(new Animated.Value(0)).current;
   const isPaused = useGameStore(state => state.isPaused);
   const resumeGame = useGameStore(state => state.resumeGame);
+  const getRecipeHint = useGameStore(state => state.getRecipeHint);
+  const dailyFreeHints = useGameStore(state => state.dailyFreeHints);
+  const hintTokens = useGameStore(state => state.hintTokens);
+  const [hintIds, setHintIds] = useState<string[]>([]);
+  const [npcHint, setNpcHint] = useState<string>('');
 
   useEffect(
     function startTimer() {
@@ -181,6 +186,8 @@ function GameScreen(): React.ReactElement {
       updateCustomer(customerId, { position: { x: 0, y: 0 }, mood: 'neutral' });
       playVendorArrive(settings.soundVolume);
       setActionDisabled(false);
+      setHintIds([]);
+      setNpcHint('');
     },
     [updateCustomer, settings.soundVolume],
   );
@@ -197,6 +204,7 @@ function GameScreen(): React.ReactElement {
 
   function handleServe(): void {
     if (actionDisabled) return;
+    if (isPaused) return;
     if (customers.length === 0) return;
     const currentOrderItem = customers[0].order.items[0];
     const providedIngredients: Ingredient[] =
@@ -274,6 +282,15 @@ function GameScreen(): React.ReactElement {
     playClick(settings.soundVolume);
   }
 
+  function handleHint(): void {
+    if (actionDisabled || customers.length === 0) return;
+    const itemId = customers[0].order.items[0].id;
+    const picked = getRecipeHint(itemId);
+    if (picked && picked.length > 0) {
+      setHintIds(picked);
+    }
+  }
+
   const totalTime =
     settings.difficulty === 'easy'
       ? 90
@@ -290,20 +307,56 @@ function GameScreen(): React.ReactElement {
       : [];
   const showHint = customersServed < 2;
 
+  useEffect(
+    function npcHintMaybe() {
+      if (customers.length === 0 || acceptedOrder) return;
+      const reqs: string[] =
+        (customers[0].order.items[0] as any).requirements || [];
+      const p = Math.random();
+      if (p < 0.06) {
+        const map: Record<string, string> = {
+          'Thêm đá': 'Nhớ cho đúng phần đá nghen!',
+          'Ít đá': 'Cho ít đá thôi nghen!',
+          'Ít đường': 'Ít đường thôi!',
+          'Không cay': 'Không cay dùm nhé!',
+          Cay: 'Cho cay cay giùm!',
+          Nóng: 'Làm nóng giùm!',
+          Lạnh: 'Làm lạnh giùm!',
+        };
+        const candidates = reqs.filter(r => typeof map[r] === 'string');
+        const msg =
+          candidates.length > 0 ? map[candidates[0]] : 'Nhớ pha cho đúng nhé!';
+        setNpcHint(msg);
+      } else {
+        setNpcHint('');
+      }
+    },
+    [customers, acceptedOrder],
+  );
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.topBar}>
         <Text style={styles.topText}>💰 {coins}</Text>
         <View style={styles.levelWrap}>
           <Text style={styles.levelText}>Lv {level}</Text>
-          <View style={styles.levelBarBg} />
-          <View
-            style={[styles.levelBarFill, { width: `${(exp / 10) * 100}%` }]}
-          />
+          <View style={styles.levelBarContainer}>
+            <View
+              style={[styles.levelBarFill, { width: `${(exp / 10) * 100}%` }]}
+            />
+          </View>
         </View>
-        <Text style={styles.topText}>
-          ⚡ {energy}/{maxEnergy}
-        </Text>
+        <View style={styles.topRight}>
+          <Text style={styles.topText}>
+            ⚡ {energy}/{maxEnergy}
+          </Text>
+          <TouchableOpacity
+            style={styles.pauseIconButton}
+            onPress={handlePause}
+          >
+            <Text style={styles.pauseIconText}>⏸️</Text>
+          </TouchableOpacity>
+        </View>
       </View>
       <View style={styles.progressWrap}>
         <View style={styles.progressBg} />
@@ -355,14 +408,7 @@ function GameScreen(): React.ReactElement {
               ]}
               resizeMode="contain"
             />
-            {isPaused ? (
-              <View style={styles.pauseOverlay} pointerEvents="auto">
-                <PauseBanner
-                  onResume={() => resumeGame()}
-                  onHome={() => navigation.navigate('Home')}
-                />
-              </View>
-            ) : null}
+            {/* removed inner pause overlay to avoid duplicate modals; global overlay is used */}
             {acceptedOrder ? (
               <OrderCard
                 order={customers[0].order}
@@ -386,6 +432,7 @@ function GameScreen(): React.ReactElement {
                 reaction={reaction}
                 coinText={coinText}
                 coinAnim={coinAnim}
+                npcHint={acceptedOrder ? '' : npcHint}
               />
             </View>
             {acceptedOrder && (
@@ -442,12 +489,14 @@ function GameScreen(): React.ReactElement {
                     ingredient.id,
                   );
                   const isRequired = requiredIds.includes(ingredient.id);
+                  const isHinted = hintIds.includes(ingredient.id);
                   return (
                     <TouchableOpacity
                       key={ingredient.id}
                       style={[
                         isSelected ? styles.chipSelected : styles.chip,
                         showHint && isRequired ? styles.chipHint : null,
+                        isHinted ? styles.chipHint : null,
                         isSelected ? styles.chipScaleSelected : null,
                       ]}
                       onPress={() => toggleIngredient(ingredient.id)}
@@ -489,33 +538,55 @@ function GameScreen(): React.ReactElement {
             )}
 
             {acceptedOrder && (
-              <View style={styles.row}>
-                <TouchableOpacity
-                  style={styles.sampleButtonPrimary}
-                  onPress={handleServe}
-                >
-                  <Text style={styles.sampleButtonText}>
-                    {t('deliverDish')}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.secondaryButtonSmall}
-                  onPress={handleResetSelection}
-                >
-                  <Text style={styles.secondaryButtonText}>
-                    {t('selectAgain')}
-                  </Text>
-                </TouchableOpacity>
+              <View style={styles.actionRow}>
+                <View style={styles.actionItem}>
+                  <TouchableOpacity
+                    style={[styles.secondaryButtonSmall, styles.fullButton]}
+                    onPress={handleResetSelection}
+                  >
+                    <Text style={styles.secondaryButtonText}>Chọn lại</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.actionItem}>
+                  <TouchableOpacity
+                    style={[styles.secondaryButtonSmall, styles.fullButton]}
+                    onPress={() => {}}
+                    accessibilityLabel="Công thức"
+                  >
+                    <Text style={styles.secondaryButtonText}>📜 Công thức</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.actionItem}>
+                  <TouchableOpacity
+                    style={[styles.secondaryButtonSmall, styles.fullButton]}
+                    onPress={handleHint}
+                  >
+                    <Text style={styles.secondaryButtonText}>
+                      💡 Gợi ý (x{dailyFreeHints})
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             )}
           </>
         )}
       </View>
-      <View style={styles.bottomBar}>
-        <TouchableOpacity style={styles.secondaryButton} onPress={handlePause}>
-          <Text style={styles.secondaryButtonText}>{t('pause')}</Text>
-        </TouchableOpacity>
-      </View>
+      {acceptedOrder ? (
+        <View style={styles.bottomBar}>
+          <TouchableOpacity style={styles.deliverButton} onPress={handleServe}>
+            <Text style={styles.sampleButtonText}>Giao món</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+      {isPaused ? (
+        <View style={styles.globalOverlay} pointerEvents="auto">
+          <View style={styles.globalDim} />
+          <PauseBanner
+            onResume={() => resumeGame()}
+            onHome={() => navigation.navigate('Home')}
+          />
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -525,6 +596,7 @@ const styles = StyleSheet.create({
   topBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
     backgroundColor: '#E6D5B8',
@@ -547,35 +619,25 @@ const styles = StyleSheet.create({
   },
   progressFill: { height: 8, backgroundColor: '#8B4513', borderRadius: 4 },
   levelWrap: {
-    width: 96,
-    height: 18,
-    position: 'relative',
-    justifyContent: 'center',
+    width: 100,
+    flexDirection: 'column',
+    alignItems: 'center',
   },
   levelText: {
     color: '#3B2F2F',
-    fontSize: 10,
-    position: 'absolute',
-    zIndex: 5,
-    alignSelf: 'center',
-    top: -2,
+    fontSize: 12,
+    marginBottom: 4,
   },
-  levelBarBg: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 12,
-    height: 4,
+  levelBarContainer: {
+    width: '100%',
+    height: 6,
     backgroundColor: '#D2B48C',
-    borderRadius: 2,
+    borderRadius: 3,
+    overflow: 'hidden',
   },
   levelBarFill: {
-    position: 'absolute',
-    left: 0,
-    top: 12,
-    height: 4,
+    height: 6,
     backgroundColor: '#8B4513',
-    borderRadius: 2,
   },
   playArea: {
     flex: 1,
@@ -585,6 +647,7 @@ const styles = StyleSheet.create({
   },
   stallImage: { width: '92%', height: 140, marginBottom: 8, marginTop: 16 },
   hint: { color: '#6B5B5B', textAlign: 'center', marginBottom: 16 },
+  topRight: { flexDirection: 'row', alignItems: 'center' },
   sampleButton: {
     backgroundColor: '#8B4513',
     paddingVertical: 12,
@@ -594,17 +657,57 @@ const styles = StyleSheet.create({
   sampleButtonPrimary: {
     backgroundColor: '#8B4513',
     paddingVertical: 12,
-    paddingHorizontal: 24,
+    paddingHorizontal: 14,
+    alignItems: 'center',
     borderRadius: 12,
     marginRight: 8,
   },
   sampleButtonText: { color: '#FFF8E1', fontWeight: '600' },
   bottomBar: { padding: 12, alignItems: 'center' },
+  deliverButton: {
+    backgroundColor: '#8B4513',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    borderRadius: 12,
+    width: '80%',
+    alignSelf: 'center',
+  },
+  fullButton: { width: '100%' },
+  pauseIconButton: {
+    backgroundColor: '#D2B48C',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    marginLeft: 8,
+  },
+  pauseIconText: { color: '#3B2F2F', fontWeight: '600' },
+  inlineGroup: { flexDirection: 'row', alignItems: 'center' },
+  iconButton: {
+    backgroundColor: '#E6D5B8',
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    marginLeft: 8,
+  },
+  iconButtonText: { color: '#3B2F2F', fontWeight: '600' },
   row: {
     flexDirection: 'row',
     marginTop: 12,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '92%',
+    alignSelf: 'center',
+    marginTop: 12,
+  },
+  actionItem: {
+    flex: 1,
+    marginHorizontal: 6,
   },
   secondaryButton: {
     backgroundColor: '#D2B48C',
@@ -615,7 +718,14 @@ const styles = StyleSheet.create({
   secondaryButtonSmall: {
     backgroundColor: '#E6D5B8',
     paddingVertical: 8,
-    paddingHorizontal: 14,
+    // paddingHorizontal: 4,
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  pauseButtonSmall: {
+    backgroundColor: '#D2B48C',
+    paddingVertical: 8,
+    alignItems: 'center',
     borderRadius: 8,
   },
   secondaryButtonText: { color: '#3B2F2F', fontWeight: '500' },
@@ -689,6 +799,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     zIndex: 999,
     elevation: 12,
+  },
+  globalOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+    elevation: 16,
+  },
+  globalDim: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(139, 69, 19, 0.18)',
   },
 });
 

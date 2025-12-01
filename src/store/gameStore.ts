@@ -58,6 +58,10 @@ interface GameStore {
   journeyDay: number;
   journal: JournalEntry[];
   stats: Stats;
+  hintTokens: number;
+  dailyFreeHints: number;
+  lastHintResetDate?: string;
+  recipeFreeHintUsed: Record<string, boolean>;
 
   // Actions
   setGameState: (state: GameState) => void;
@@ -114,6 +118,10 @@ interface GameStore {
 
   // Reset
   resetGame: () => void;
+
+  // Hints
+  resetDailyHints: () => void;
+  getRecipeHint: (itemId: string) => string[] | null;
 }
 
 const initialSettings: Settings = {
@@ -179,6 +187,10 @@ const useGameStore = create<GameStore>()(
       journeyDay: 0,
       journal: [],
       stats: initialStats,
+      hintTokens: 0,
+      dailyFreeHints: 3,
+      lastHintResetDate: new Date().toDateString(),
+      recipeFreeHintUsed: {},
 
       // Actions
       setGameState: state => set({ gameState: state }),
@@ -551,6 +563,7 @@ const useGameStore = create<GameStore>()(
           customers: [],
           dragItems: [],
           error: null,
+          recipeFreeHintUsed: {},
         });
       },
 
@@ -591,6 +604,7 @@ const useGameStore = create<GameStore>()(
             lastEnergyResetDate: today,
             lastEnergyAt: now,
           });
+          set({ dailyFreeHints: 3 });
           return;
         }
         const interval = 5 * 60 * 1000;
@@ -612,6 +626,54 @@ const useGameStore = create<GameStore>()(
             : 60;
         const adjusted = Math.max(20, base - state.level * 5);
         set({ timeRemaining: adjusted });
+      },
+
+      resetDailyHints: () => {
+        const state = get();
+        const today = new Date().toDateString();
+        if (state.lastHintResetDate !== today) {
+          set({ dailyFreeHints: 3, lastHintResetDate: today });
+        }
+      },
+
+      getRecipeHint: (itemId: string) => {
+        const state = get();
+        const { RECIPE_CATALOG } = require('../game/recipes');
+        const { INGREDIENT_CATEGORIES } = require('../game/categories');
+        const rec = RECIPE_CATALOG.find((r: any) => r.id === itemId);
+        if (!rec) return null;
+        const wasFreeUsed = state.recipeFreeHintUsed[itemId] === true;
+        if (!wasFreeUsed) {
+          set({
+            recipeFreeHintUsed: { ...state.recipeFreeHintUsed, [itemId]: true },
+          });
+        } else if (state.dailyFreeHints > 0) {
+          set({ dailyFreeHints: Math.max(0, state.dailyFreeHints - 1) });
+        } else if (state.hintTokens > 0) {
+          set({ hintTokens: Math.max(0, state.hintTokens - 1) });
+        } else {
+          return null;
+        }
+        const ids = rec.ingredients.map((i: any) => i.id);
+        function pickFromCat(cat: string): string | undefined {
+          const list = INGREDIENT_CATEGORIES[cat] || [];
+          const found = ids.find((id: string) => list.includes(id));
+          return found;
+        }
+        const picks: string[] = [];
+        const base = pickFromCat('base');
+        const liquid = pickFromCat('liquid');
+        const topping = pickFromCat('topping');
+        if (base) picks.push(base);
+        if (liquid) picks.push(liquid);
+        if (topping) picks.push(topping);
+        if (picks.length < 3) {
+          for (const id of ids) {
+            if (picks.length >= 3) break;
+            if (!picks.includes(id)) picks.push(id);
+          }
+        }
+        return picks.slice(0, 3);
       },
     }),
     {
@@ -637,6 +699,10 @@ const useGameStore = create<GameStore>()(
         journal: state.journal,
         journeyDay: state.journeyDay,
         stats: state.stats,
+        hintTokens: state.hintTokens,
+        dailyFreeHints: state.dailyFreeHints,
+        lastHintResetDate: state.lastHintResetDate,
+        recipeFreeHintUsed: state.recipeFreeHintUsed,
       }),
     },
   ),

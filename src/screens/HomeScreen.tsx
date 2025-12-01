@@ -18,12 +18,14 @@ function HomeScreen(): React.ReactElement {
   const energy = useGameStore(state => state.energy);
   const maxEnergy = useGameStore(state => state.maxEnergy);
   const refreshEnergy = useGameStore(state => state.refreshEnergy);
+  const resetDailyHints = useGameStore(state => state.resetDailyHints);
 
   useEffect(
     function onFocusRefresh() {
       refreshEnergy();
+      resetDailyHints();
     },
-    [refreshEnergy],
+    [refreshEnergy, resetDailyHints],
   );
 
   function handleStart(): void {
@@ -61,7 +63,9 @@ function HomeScreen(): React.ReactElement {
           </TouchableOpacity>
           <View style={styles.energySummary}>
             <Text style={styles.energyIcon}>⚡</Text>
-            <Text style={styles.energyText}>{energy}/{maxEnergy}</Text>
+            <Text style={styles.energyText}>
+              {energy}/{maxEnergy}
+            </Text>
           </View>
         </View>
         <View style={styles.titleBlock}>
@@ -109,7 +113,11 @@ function HomeScreen(): React.ReactElement {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5DC' },
   header: { paddingTop: 24, paddingHorizontal: 24, alignItems: 'center' },
-  topRightBar: { alignSelf: 'flex-end', flexDirection: 'row', alignItems: 'center' },
+  topRightBar: {
+    alignSelf: 'flex-end',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   langToggle: {
     backgroundColor: '#E6D5B8',
     paddingVertical: 6,
@@ -118,7 +126,14 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   langToggleText: { color: '#3B2F2F', fontWeight: '600' },
-  energySummary: { backgroundColor: '#E6D5B8', paddingVertical: 6, paddingHorizontal: 10, borderRadius: 12, flexDirection: 'row', alignItems: 'center' },
+  energySummary: {
+    backgroundColor: '#E6D5B8',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   energyIcon: { color: '#8A4F2B', marginRight: 6 },
   energyText: { color: '#3B2F2F', fontWeight: '600' },
   titleBlock: { marginTop: 40, alignItems: 'center' },

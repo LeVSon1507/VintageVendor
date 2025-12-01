@@ -21,6 +21,7 @@ export type CustomerWalkerProps = {
   reaction?: 'success' | 'fail' | null;
   coinText?: string;
   coinAnim?: Animated.Value;
+  npcHint?: string;
 };
 
 function CustomerWalker(props: CustomerWalkerProps): React.ReactElement {
@@ -32,6 +33,7 @@ function CustomerWalker(props: CustomerWalkerProps): React.ReactElement {
     reaction,
     coinText,
     coinAnim,
+    npcHint,
   } = props;
   const translateX = useRef(new Animated.Value(-120)).current;
   const [frameIndex, setFrameIndex] = useState(0);
@@ -181,6 +183,9 @@ function CustomerWalker(props: CustomerWalkerProps): React.ReactElement {
               <Text style={styles.bubbleSub}>
                 {bubbleItem.price}₫ • {bubbleItem.preparationTime}s
               </Text>
+              {npcHint ? (
+                <Text style={styles.bubbleNpcHint}>{npcHint}</Text>
+              ) : null}
               {Array.isArray((bubbleItem as any).requirements) &&
               (bubbleItem as any).requirements.length > 0 ? (
                 <View style={styles.bubbleReqRow}>
@@ -246,6 +251,7 @@ const styles = StyleSheet.create({
   bubbleInfo: { flexDirection: 'column' },
   bubbleTitle: { color: '#3B2F2F', fontWeight: '700' },
   bubbleSub: { color: '#6B5B5B', marginTop: 2 },
+  bubbleNpcHint: { color: '#8A4F2B', marginTop: 2, fontStyle: 'italic' },
   bubbleReqRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',

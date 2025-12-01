@@ -15,6 +15,7 @@ function GameOverScreen(): React.ReactElement {
   const resetGame = useGameStore(state => state.resetGame);
 
   function handleRetry(): void {
+    resetGame();
     startGame();
     navigation.replace('Game');
   }

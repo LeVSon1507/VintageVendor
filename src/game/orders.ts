@@ -50,22 +50,58 @@ function generateRequirements(
     return rng.nextInt(0, 100) % 2 === 0 ? 1 : -1;
   });
   const picked = shuffled.slice(0, count);
+  const forced = new Set<string>();
   if (customerType === 'elderly') {
-    if (id === 'xien_que_tuong_ot' && !picked.includes('Không cay'))
+    if (id === 'xien_que_tuong_ot' && !picked.includes('Không cay')) {
       picked.push('Không cay');
-    if (id === 'cafe_vot' && !picked.includes('Nóng')) picked.push('Nóng');
-    if (id === 'sua_dau_nanh' && !picked.includes('Nóng')) picked.push('Nóng');
+      forced.add('Không cay');
+    }
+    if (id === 'cafe_vot' && !picked.includes('Nóng')) {
+      picked.push('Nóng');
+      forced.add('Nóng');
+    }
+    if (id === 'sua_dau_nanh' && !picked.includes('Nóng')) {
+      picked.push('Nóng');
+      forced.add('Nóng');
+    }
   }
   if (customerType === 'student') {
     if (
       (id === 'soda_da_chanh' || id === 'soda_chai' || id === 'sua_dau_nanh') &&
       !picked.includes('Thêm đá')
     )
-      picked.push('Thêm đá');
-    if (id.startsWith('xien_que') && !picked.includes('Cay'))
+      { picked.push('Thêm đá'); forced.add('Thêm đá'); }
+    if (id.startsWith('xien_que') && !picked.includes('Cay')) {
       picked.push('Cay');
+      forced.add('Cay');
+    }
   }
-  return Array.from(new Set(picked));
+  const unique = Array.from(new Set(picked));
+  const groups: string[][] = [
+    ['Không cay', 'Cay'],
+    ['Nóng', 'Lạnh', 'Ướp lạnh'],
+    ['Không đá', 'Ít đá', 'Thêm đá'],
+  ];
+  function resolveGroup(list: string[]): void {
+    const present = unique.filter(x => list.includes(x));
+    if (present.length <= 1) return;
+    let keep: string | undefined;
+    const forcedPresent = present.filter(x => forced.has(x));
+    if (forcedPresent.length > 0) {
+      const priorityOrder = list;
+      keep = forcedPresent.sort((a, b) => priorityOrder.indexOf(a) - priorityOrder.indexOf(b))[0];
+    } else {
+      keep = present.sort((a, b) => list.indexOf(a) - list.indexOf(b))[0];
+    }
+    for (const item of present) {
+      if (item !== keep) {
+        const idx = unique.indexOf(item);
+        if (idx >= 0) unique.splice(idx, 1);
+      }
+    }
+  }
+  groups.forEach(resolveGroup);
+  return unique;
 }
 
 function getIngredientByIdLocal(id: string): Ingredient | undefined {
