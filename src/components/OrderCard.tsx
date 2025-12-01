@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Image } from 'react-native';
 import { Order } from '../types';
 import { t } from '../i18n';
+import { getItemName, getIngredientName } from '../i18n/names';
 import { getItemImage } from '../game/assets';
 
 type OrderCardProps = {
@@ -31,7 +32,7 @@ function OrderCard(props: OrderCardProps): React.ReactElement {
               <View style={styles.namePriceRow}>
                 <View style={styles.nameWrap}>
                   <Text style={compact ? styles.itemNameSm : styles.itemName}>
-                    {item.name}
+                    {getItemName(item.id)}
                   </Text>
                 </View>
                 <Text style={compact ? styles.itemMetaSm : styles.itemMeta}>
@@ -59,7 +60,7 @@ function OrderCard(props: OrderCardProps): React.ReactElement {
                 : item.ingredients.map(function renderIngredient(ingredient) {
                     return (
                       <Text key={ingredient.id} style={styles.ingredientText}>
-                        • {ingredient.name}
+                        • {getIngredientName(ingredient.id)}
                       </Text>
                     );
                   })}

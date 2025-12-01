@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Switch } from 'react-native';
+import { t } from '../i18n';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import useGameStore from '../store/gameStore';
 
@@ -28,19 +29,19 @@ function SettingsScreen(): React.ReactElement {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Cài đặt</Text>
+      <Text style={styles.title}>{t('settingsTitle')}</Text>
       <View style={styles.rowBetween}>
-        <Text style={styles.label}>Ngôn ngữ</Text>
+        <Text style={styles.label}>{t('languageLabel')}</Text>
         <TouchableOpacity style={styles.pill} onPress={toggleLanguage}>
           <Text style={styles.pillText}>{settings.language === 'vi' ? 'Tiếng Việt' : 'English'}</Text>
         </TouchableOpacity>
       </View>
       <View style={styles.rowBetween}>
-        <Text style={styles.label}>Rung</Text>
+        <Text style={styles.label}>{t('vibrationLabel')}</Text>
         <Switch value={settings.vibration} onValueChange={toggleVibration} />
       </View>
       <View style={styles.block}>
-        <Text style={styles.label}>Âm nhạc: {Math.round(settings.musicVolume * 100)}%</Text>
+        <Text style={styles.label}>{t('musicLabel')}: {Math.round(settings.musicVolume * 100)}%</Text>
         <View style={styles.rowBetween}>
           <TouchableOpacity style={styles.pill} onPress={() => adjustMusicVolume(-0.1)}>
             <Text style={styles.pillText}>-</Text>
@@ -51,7 +52,7 @@ function SettingsScreen(): React.ReactElement {
         </View>
       </View>
       <View style={styles.block}>
-        <Text style={styles.label}>Hiệu ứng âm thanh: {Math.round(settings.soundVolume * 100)}%</Text>
+        <Text style={styles.label}>{t('soundLabel')}: {Math.round(settings.soundVolume * 100)}%</Text>
         <View style={styles.rowBetween}>
           <TouchableOpacity style={styles.pill} onPress={() => adjustSoundVolume(-0.1)}>
             <Text style={styles.pillText}>-</Text>

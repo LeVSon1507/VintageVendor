@@ -17,6 +17,7 @@ import OrderCard from '../components/OrderCard';
 import { validateServe } from '../game/serve';
 import { INGREDIENT_CATALOG } from '../game/ingredients';
 import { getIngredientImage, getStallImage } from '../game/assets';
+import { getIngredientName } from '../i18n/names';
 import { compileSelectedDish } from '../game/combine';
 import CustomerWalker from '../components/CustomerWalker';
 import PauseBanner from '../components/PauseBanner';
@@ -445,7 +446,7 @@ function GameScreen(): React.ReactElement {
                           isSelected ? styles.chipTextSelected : styles.chipText
                         }
                       >
-                        {ingredient.name}
+                        {getIngredientName(ingredient.id)}
                       </Text>
                     </TouchableOpacity>
                   );

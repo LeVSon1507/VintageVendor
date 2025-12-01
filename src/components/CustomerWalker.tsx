@@ -175,7 +175,9 @@ function CustomerWalker(props: CustomerWalkerProps): React.ReactElement {
               style={styles.bubbleIcon}
             />
             <View style={styles.bubbleInfo}>
-              <Text style={styles.bubbleTitle}>{bubbleItem.name}</Text>
+              <Text style={styles.bubbleTitle}>
+                {require('../i18n/names').getItemName(bubbleItem.id)}
+              </Text>
               <Text style={styles.bubbleSub}>
                 {bubbleItem.price}₫ • {bubbleItem.preparationTime}s
               </Text>

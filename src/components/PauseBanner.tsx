@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
+import { t } from '../i18n';
 
 export type PauseBannerProps = {
   onResume: () => void;
@@ -25,14 +26,14 @@ function PauseBanner(props: PauseBannerProps): React.ReactElement {
           <View style={styles.bar} />
           <View style={styles.bar} />
         </View>
-        <Text style={styles.title}>Tạm dừng</Text>
+        <Text style={styles.title}>{t('pause')}</Text>
       </View>
       <View style={styles.btnRow}>
         <TouchableOpacity style={styles.btnPrimary} onPress={onResume}>
-          <Text style={styles.btnPrimaryText}>Tiếp tục</Text>
+          <Text style={styles.btnPrimaryText}>{t('resume')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.btnSecondary} onPress={onHome}>
-          <Text style={styles.btnSecondaryText}>Về trang chủ</Text>
+          <Text style={styles.btnSecondaryText}>{t('home')}</Text>
         </TouchableOpacity>
       </View>
     </Animated.View>
