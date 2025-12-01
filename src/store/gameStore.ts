@@ -1,7 +1,14 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { GameState, Settings, Customer, DragItem, Collectible, LeaderboardEntry } from '../types';
+import {
+  GameState,
+  Settings,
+  Customer,
+  DragItem,
+  Collectible,
+  LeaderboardEntry,
+} from '../types';
 
 interface GameStore {
   // Game state
@@ -19,6 +26,8 @@ interface GameStore {
   exp: number;
   energy: number;
   maxEnergy: number;
+  lastEnergyAt?: number;
+  lastEnergyResetDate?: string;
 
   // Player data
   playerName: string;
@@ -127,8 +136,10 @@ const useGameStore = create<GameStore>()(
       coins: 0,
       level: 1,
       exp: 0,
-      energy: 10,
-      maxEnergy: 10,
+      energy: 5,
+      maxEnergy: 5,
+      lastEnergyAt: Date.now(),
+      lastEnergyResetDate: new Date().toDateString(),
 
       playerName: 'Player',
       playerId: '',
@@ -156,6 +167,27 @@ const useGameStore = create<GameStore>()(
 
       startGame: () => {
         const state = get();
+        const today = new Date().toDateString();
+        const now = Date.now();
+        if (state.lastEnergyResetDate !== today) {
+          set({
+            energy: state.maxEnergy,
+            lastEnergyResetDate: today,
+            lastEnergyAt: now,
+          });
+        } else {
+          const interval = 5 * 60 * 1000;
+          const last = state.lastEnergyAt ?? now;
+          const gained = Math.floor((now - last) / interval);
+          if (gained > 0) {
+            const newEnergy = Math.min(state.maxEnergy, state.energy + gained);
+            const newLast = last + gained * interval;
+            set({ energy: newEnergy, lastEnergyAt: newLast });
+          }
+        }
+        const check = get();
+        if (check.energy <= 0) return;
+        set({ energy: Math.max(0, check.energy - 1) });
         const { RECIPE_CATALOG } = require('../game/recipes');
         set({
           gameState: 'playing',
@@ -187,7 +219,10 @@ const useGameStore = create<GameStore>()(
         const state = get();
         const finalScore = state.currentScore;
         const newHighScore = Math.max(state.highScore, finalScore);
-        const durationSec = Math.max(0, Math.round((Date.now() - state.gameStartTime) / 1000));
+        const durationSec = Math.max(
+          0,
+          Math.round((Date.now() - state.gameStartTime) / 1000),
+        );
         const newHighCoins = Math.max(state.highCoins, state.sessionCoins);
         const newEntry: LeaderboardEntry = {
           rank: 0,
@@ -196,8 +231,12 @@ const useGameStore = create<GameStore>()(
           duration: durationSec,
           customersServed: state.customersServed,
         };
-        const list = [...state.leaderboard, newEntry].sort(function cmp(a, b) { return b.score - a.score; });
-        const ranked = list.map(function withRank(entry, idx) { return { ...entry, rank: idx + 1 }; });
+        const list = [...state.leaderboard, newEntry].sort(function cmp(a, b) {
+          return b.score - a.score;
+        });
+        const ranked = list.map(function withRank(entry, idx) {
+          return { ...entry, rank: idx + 1 };
+        });
 
         set({
           gameState: 'gameOver',
@@ -217,16 +256,37 @@ const useGameStore = create<GameStore>()(
         const { generateOrder } = require('../game/orders');
         const { RECIPE_CATALOG } = require('../game/recipes');
         const customer = createCustomer();
-        const queue = state.recipeQueue && state.recipeQueue.length > 0 ? state.recipeQueue : RECIPE_CATALOG.map((r: any) => r.id);
-        const forceId = queue[0];
-        const nextQueue = forceId ? [...queue.slice(1), forceId] : queue;
-        const currentIds = state.customers.map(c => c.order.items[0]?.id).filter(Boolean);
-        const exclude = Array.from(new Set([...(state.recentRecipeIds || []), ...currentIds]));
-        const order = generateOrder({ difficulty: state.settings.difficulty, excludeItemIds: exclude, customerType: customer.type, forceRecipeId: forceId });
+        const allIds: string[] = (RECIPE_CATALOG || []).map((r: any) => r.id);
+        if (allIds.length === 0) return;
+        const existingQueue = Array.isArray(state.recipeQueue)
+          ? state.recipeQueue.filter((id: string) => allIds.includes(id))
+          : [];
+        const queue = existingQueue.length > 0 ? existingQueue : allIds;
+        const forceId = queue[0] ?? allIds[0];
+        const nextQueue =
+          queue.length > 0 ? [...queue.slice(1), queue[0]] : queue;
+        const currentIds = state.customers
+          .map(c => c.order.items[0]?.id)
+          .filter(Boolean);
+        const exclude = Array.from(
+          new Set([...(state.recentRecipeIds || []), ...currentIds]),
+        );
+        const order = generateOrder({
+          difficulty: state.settings.difficulty,
+          excludeItemIds: exclude,
+          customerType: customer.type,
+          forceRecipeId: forceId,
+        });
         const withOrder = { ...customer, order };
         const firstId = order.items[0]?.id;
-        const nextRecent = firstId ? Array.from(new Set([firstId, ...state.recentRecipeIds])).slice(0, 3) : state.recentRecipeIds;
-        set({ customers: [...state.customers, withOrder], recentRecipeIds: nextRecent, recipeQueue: nextQueue });
+        const nextRecent = firstId
+          ? Array.from(new Set([firstId, ...state.recentRecipeIds])).slice(0, 3)
+          : state.recentRecipeIds;
+        set({
+          customers: [...state.customers, withOrder],
+          recentRecipeIds: nextRecent,
+          recipeQueue: nextQueue,
+        });
       },
 
       serveCurrentCustomerCorrect: () => {
@@ -270,11 +330,17 @@ const useGameStore = create<GameStore>()(
         const updatedPatience = Math.max(0, current.patience - 20);
         const updatedMood = updatedPatience <= 20 ? 'angry' : 'impatient';
         set({
-          customers: [{ ...current, patience: updatedPatience, mood: updatedMood }, ...state.customers.slice(1)],
+          customers: [
+            { ...current, patience: updatedPatience, mood: updatedMood },
+            ...state.customers.slice(1),
+          ],
         });
         set({ combo: 0 });
 
-        const penaltyCoins = Math.max(0, Math.round(current.order.totalPrice * 0.1));
+        const penaltyCoins = Math.max(
+          0,
+          Math.round(current.order.totalPrice * 0.1),
+        );
         const penaltyScore = 50;
         set({ coins: Math.max(0, state.coins - penaltyCoins) });
         set({ sessionCoins: Math.max(0, state.sessionCoins - penaltyCoins) });
@@ -422,9 +488,40 @@ const useGameStore = create<GameStore>()(
           energy: Math.min(state.maxEnergy, state.energy + Math.max(0, amount)),
         });
       },
+      watchAdEnergy: () => {
+        const state = get();
+        const next = Math.min(state.maxEnergy, state.energy + 1);
+        set({ energy: next, lastEnergyAt: Date.now() });
+      },
+      refreshEnergy: () => {
+        const state = get();
+        const today = new Date().toDateString();
+        const now = Date.now();
+        if (state.lastEnergyResetDate !== today) {
+          set({
+            energy: state.maxEnergy,
+            lastEnergyResetDate: today,
+            lastEnergyAt: now,
+          });
+          return;
+        }
+        const interval = 5 * 60 * 1000;
+        const last = state.lastEnergyAt ?? now;
+        const gained = Math.floor((now - last) / interval);
+        if (gained > 0) {
+          const newEnergy = Math.min(state.maxEnergy, state.energy + gained);
+          const newLast = last + gained * interval;
+          set({ energy: newEnergy, lastEnergyAt: newLast });
+        }
+      },
       resetRoundTimer: () => {
         const state = get();
-        const base = state.settings.difficulty === 'easy' ? 90 : state.settings.difficulty === 'hard' ? 45 : 60;
+        const base =
+          state.settings.difficulty === 'easy'
+            ? 90
+            : state.settings.difficulty === 'hard'
+            ? 45
+            : 60;
         const adjusted = Math.max(20, base - state.level * 5);
         set({ timeRemaining: adjusted });
       },
@@ -447,6 +544,8 @@ const useGameStore = create<GameStore>()(
         exp: state.exp,
         energy: state.energy,
         maxEnergy: state.maxEnergy,
+        lastEnergyAt: state.lastEnergyAt,
+        lastEnergyResetDate: state.lastEnergyResetDate,
       }),
     },
   ),

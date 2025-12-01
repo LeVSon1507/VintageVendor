@@ -12,7 +12,8 @@ export type OrderOptions = {
 
 function pickRecipeId(options: OrderOptions): string {
   if (options.forceRecipeId) {
-    return options.forceRecipeId;
+    const forced = RECIPE_CATALOG.find(r => r.id === options.forceRecipeId);
+    if (forced) return forced.id;
   }
   const exclude = new Set(options.excludeItemIds ?? []);
   const candidates = RECIPE_CATALOG.filter(function allow(r) {

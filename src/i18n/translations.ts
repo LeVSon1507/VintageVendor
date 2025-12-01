@@ -35,6 +35,10 @@ export const translations = {
     soundLabel: 'Hiệu ứng âm thanh',
     resume: 'Tiếp tục',
     leaderboardHint: 'Bảng xếp hạng sẽ được đồng bộ sau — placeholder',
+    yourBest: 'Thành tích của bạn',
+    store: 'Cửa hàng',
+    unlocked: 'Đã mở khóa',
+    locked: 'Bị khóa',
   },
   en: {
     start: 'Start',
@@ -72,5 +76,9 @@ export const translations = {
     soundLabel: 'Sound Effects',
     resume: 'Resume',
     leaderboardHint: 'Leaderboard will be synced later — placeholder',
+    yourBest: 'Your best',
+    store: 'Store',
+    unlocked: 'Unlocked',
+    locked: 'Locked',
   },
 } as const;

@@ -10,6 +10,7 @@ import GameOverScreen from '../screens/GameOverScreen';
 import PhotoModeScreen from '../screens/PhotoModeScreen';
 import LeaderboardScreen from '../screens/LeaderboardScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import StoreListScreen from '../screens/StoreListScreen';
 
 // Types
 import { RootStackParamList } from '../types';
@@ -69,6 +70,10 @@ function RootNavigator(): React.ReactElement {
           options={{
             presentation: 'modal',
           }}
+        />
+        <Stack.Screen
+          name="StoreList"
+          component={StoreListScreen}
         />
       </Stack.Navigator>
     </NavigationContainer>

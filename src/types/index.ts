@@ -148,6 +148,7 @@ export type RootStackParamList = {
   PhotoMode: { gameState: GameState };
   Leaderboard: undefined;
   Settings: undefined;
+  StoreList: undefined;
 };
 
 // Component props
