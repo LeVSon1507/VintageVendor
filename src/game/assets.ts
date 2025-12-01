@@ -98,7 +98,34 @@ export function getIngredientImage(id: string): any {
   return INGREDIENT_IMAGES[id] || INGREDIENT_IMAGES['nuoc_soi'];
 }
 
+import useGameStore from '../store/gameStore';
+import { STORE_ITEMS } from './store';
+
 export const STALL_IMAGE = require('../assets/images/stall/stall.webp');
+const STALL_UPGRADE_IMAGES: any[] = [
+  require('../assets/images/stall/stall_radio_1.png'),
+  require('../assets/images/stall/stall_radio_themban_2.png'),
+  require('../assets/images/stall/stall_den_long_3.png'),
+  require('../assets/images/stall/stall_snack_4.png'),
+  require('../assets/images/stall/stall_xe_day_cao_cap_5.png'),
+];
+
 export function getStallImage(): any {
-  return STALL_IMAGE;
+  try {
+    const coins = useGameStore.getState().coins;
+    const thresholds = STORE_ITEMS.map(item => item.cost);
+    let idx = -1;
+    for (let i = thresholds.length - 1; i >= 0; i--) {
+      if (coins >= thresholds[i]) {
+        idx = i;
+        break;
+      }
+    }
+    if (idx >= 0) {
+      return STALL_UPGRADE_IMAGES[idx];
+    }
+    return STALL_IMAGE;
+  } catch (e) {
+    return STALL_IMAGE;
+  }
 }

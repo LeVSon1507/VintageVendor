@@ -148,6 +148,7 @@ function GameScreen(): React.ReactElement {
   const coinAnim = useRef(new Animated.Value(0)).current;
   const consumeEnergy = useGameStore(state => state.consumeEnergy);
   const [acceptedOrder, setAcceptedOrder] = useState<boolean>(false);
+  const [actionDisabled, setActionDisabled] = useState<boolean>(false);
   const [activeCategory, setActiveCategory] = useState<string>('base');
   const stallAnim = useRef(new Animated.Value(0)).current;
   const isPaused = useGameStore(state => state.isPaused);
@@ -179,11 +180,13 @@ function GameScreen(): React.ReactElement {
     function onArriveCustomer(customerId: string): void {
       updateCustomer(customerId, { position: { x: 0, y: 0 }, mood: 'neutral' });
       playVendorArrive(settings.soundVolume);
+      setActionDisabled(false);
     },
     [updateCustomer, settings.soundVolume],
   );
 
   function toggleIngredient(ingredientId: string): void {
+    if (actionDisabled) return;
     setSelectedIngredientIds(function next(prev) {
       return prev.includes(ingredientId)
         ? prev.filter(id => id !== ingredientId)
@@ -193,6 +196,7 @@ function GameScreen(): React.ReactElement {
   }
 
   function handleServe(): void {
+    if (actionDisabled) return;
     if (customers.length === 0) return;
     const currentOrderItem = customers[0].order.items[0];
     const providedIngredients: Ingredient[] =
@@ -201,6 +205,7 @@ function GameScreen(): React.ReactElement {
       });
     const result = validateServe(currentOrderItem, providedIngredients);
     if (result.ok) {
+      setActionDisabled(true);
       serveCurrentCustomerCorrect();
       consumeEnergy(1);
       playServeSuccess(settings.soundVolume);
@@ -261,6 +266,12 @@ function GameScreen(): React.ReactElement {
       }
     }
     setSelectedIngredientIds([]);
+  }
+
+  function handleResetSelection(): void {
+    if (actionDisabled) return;
+    setSelectedIngredientIds([]);
+    playClick(settings.soundVolume);
   }
 
   const totalTime =
@@ -368,6 +379,7 @@ function GameScreen(): React.ReactElement {
                   acceptedOrder ? undefined : customers[0].order.items[0]
                 }
                 onAcceptOrder={() => {
+                  if (actionDisabled) return;
                   setAcceptedOrder(true);
                   useGameStore.getState().resetRoundTimer();
                 }}
@@ -402,7 +414,10 @@ function GameScreen(): React.ReactElement {
                           ? styles.categoryChipActive
                           : styles.categoryChip
                       }
-                      onPress={() => setActiveCategory(key)}
+                      onPress={() => {
+                        if (actionDisabled) return;
+                        setActiveCategory(key);
+                      }}
                     >
                       <Text style={styles.categoryText}>{labelMap[key]}</Text>
                     </TouchableOpacity>
@@ -435,7 +450,7 @@ function GameScreen(): React.ReactElement {
                         showHint && isRequired ? styles.chipHint : null,
                         isSelected ? styles.chipScaleSelected : null,
                       ]}
-                      onPress={() => toggleIngredient(ingredient.id)}
+                  onPress={() => toggleIngredient(ingredient.id)}
                     >
                       <Image
                         source={getIngredientImage(ingredient.id)}
@@ -485,7 +500,7 @@ function GameScreen(): React.ReactElement {
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.secondaryButtonSmall}
-                  onPress={handleServeWrong}
+                  onPress={handleResetSelection}
                 >
                   <Text style={styles.secondaryButtonText}>
                     {t('selectAgain')}
