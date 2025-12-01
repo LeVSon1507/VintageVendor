@@ -228,7 +228,7 @@ function GameScreen(): React.ReactElement {
     } else {
       const compiled = compileSelectedDish(selectedIngredientIds);
       if (compiled) {
-        serveCurrentCustomerWrong();
+        serveCurrentCustomerWrong(result.missing.length);
         consumeEnergy(1);
         playServeFail(settings.soundVolume);
         setReaction('fail');
@@ -246,7 +246,7 @@ function GameScreen(): React.ReactElement {
           setCoinText('');
         });
       } else {
-        serveCurrentCustomerWrong();
+        serveCurrentCustomerWrong(result.missing.length);
         consumeEnergy(1);
         playServeFail(settings.soundVolume);
         setReaction('fail');
@@ -450,7 +450,7 @@ function GameScreen(): React.ReactElement {
                         showHint && isRequired ? styles.chipHint : null,
                         isSelected ? styles.chipScaleSelected : null,
                       ]}
-                  onPress={() => toggleIngredient(ingredient.id)}
+                      onPress={() => toggleIngredient(ingredient.id)}
                     >
                       <Image
                         source={getIngredientImage(ingredient.id)}

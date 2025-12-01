@@ -34,6 +34,25 @@ export type LeaderboardEntry = {
   customersServed: number;
 };
 
+export type JournalEntry = {
+  id: string;
+  day: number;
+  title: string;
+  date?: string;
+  achieved: boolean;
+  note?: string;
+};
+
+export type Stats = {
+  customerTypeCounts: Record<'student' | 'worker' | 'elderly' | 'tourist', number>;
+  itemSoldCounts: Record<string, number>;
+  wrongServeCount: number;
+  outOfStockCount: number;
+  totalSodaChaiSold: number;
+  coinsEarnedThisSession: number;
+  randomNotes: string[];
+};
+
 // Game entities
 export type Customer = {
   id: string;

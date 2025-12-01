@@ -6,9 +6,9 @@ export type StoreItem = {
 };
 
 export const STORE_ITEMS: StoreItem[] = [
-  { id: 'retro_radio', name: 'Thêm radio ngầu đét', cost: 2500000 },
-  { id: 'extra_tables', name: 'Mua thêm bàn ghế', cost: 2700000 },
-  { id: 'lanterns', name: 'Mua thêm đèn lồng', cost: 2800000 },
-  { id: 'snack_display', name: 'Mua giá trưng bày snack', cost: 2900000 },
-  { id: 'premium_cart', name: 'Nâng cấp xe đẩy hạng sang', cost: 3000000 },
+  { id: 'retro_radio', name: 'Radio retro', cost: 2500000 },
+  { id: 'neon_light', name: 'Đèn neon', cost: 2800000 },
+  { id: 'vintage_tables', name: 'Bàn ghế vintage', cost: 3000000 },
+  { id: 'sign_vintage', name: 'Biển hiệu cổ điển', cost: 2200000 },
+  { id: 'premium_cart', name: 'Xe đẩy cao cấp', cost: 3000000 },
 ];

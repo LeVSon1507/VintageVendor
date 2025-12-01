@@ -8,6 +8,8 @@ import {
   DragItem,
   Collectible,
   LeaderboardEntry,
+  JournalEntry,
+  Stats,
 } from '../types';
 
 interface GameStore {
@@ -53,6 +55,9 @@ interface GameStore {
   highCoins: number;
   leaderboard: LeaderboardEntry[];
   recipeQueue: string[];
+  journeyDay: number;
+  journal: JournalEntry[];
+  stats: Stats;
 
   // Actions
   setGameState: (state: GameState) => void;
@@ -64,7 +69,7 @@ interface GameStore {
   // Gameplay actions
   spawnCustomerWithOrder: () => void;
   serveCurrentCustomerCorrect: () => void;
-  serveCurrentCustomerWrong: () => void;
+  serveCurrentCustomerWrong: (missingCount?: number) => void;
   finalizeServeCurrentCustomer: () => void;
 
   // Progression actions
@@ -121,6 +126,16 @@ const initialSettings: Settings = {
   autoSave: true,
 };
 
+const initialStats: Stats = {
+  customerTypeCounts: { student: 0, worker: 0, elderly: 0, tourist: 0 },
+  itemSoldCounts: {},
+  wrongServeCount: 0,
+  outOfStockCount: 0,
+  totalSodaChaiSold: 0,
+  coinsEarnedThisSession: 0,
+  randomNotes: [],
+};
+
 const useGameStore = create<GameStore>()(
   persist(
     (set, get) => ({
@@ -161,6 +176,9 @@ const useGameStore = create<GameStore>()(
       highCoins: 0,
       leaderboard: [],
       recipeQueue: [],
+      journeyDay: 0,
+      journal: [],
+      stats: initialStats,
 
       // Actions
       setGameState: state => set({ gameState: state }),
@@ -175,6 +193,35 @@ const useGameStore = create<GameStore>()(
             lastEnergyResetDate: today,
             lastEnergyAt: now,
           });
+          const nextDay = (state.journeyDay || 0) + 1;
+          const baseJournal: JournalEntry[] = state.journal || [];
+          const milestones = [
+            { day: 1, title: 'Mở stall' },
+            { day: 3, title: 'Mua radio cũ' },
+            { day: 7, title: 'Decor bằng lồng đèn' },
+            { day: 10, title: 'Khách VIP ghé' },
+            { day: 20, title: 'Mở rộng bàn' },
+          ];
+          const coinsNow = state.coins;
+          const achievedJournal: JournalEntry[] = milestones.map(
+            function makeEntry(m) {
+              const existing = baseJournal.find(function findEntry(e) {
+                return e.day === m.day && e.title === m.title;
+              });
+              const isAchieved = nextDay >= m.day || coinsNow >= 2200000;
+              const entry: JournalEntry = existing
+                ? { ...existing, achieved: existing.achieved || isAchieved }
+                : {
+                    id: `journal_${m.day}`,
+                    day: m.day,
+                    title: m.title,
+                    achieved: isAchieved,
+                    date: today,
+                  };
+              return entry;
+            },
+          );
+          set({ journeyDay: nextDay, journal: achievedJournal });
         } else {
           const interval = 5 * 60 * 1000;
           const last = state.lastEnergyAt ?? now;
@@ -209,6 +256,12 @@ const useGameStore = create<GameStore>()(
           exp: 0,
           sessionCoins: 0,
           recipeQueue: RECIPE_CATALOG.map((r: any) => r.id),
+          stats: {
+            ...state.stats,
+            coinsEarnedThisSession: 0,
+            wrongServeCount: state.stats.wrongServeCount,
+            outOfStockCount: state.stats.outOfStockCount,
+          },
         });
       },
 
@@ -245,6 +298,7 @@ const useGameStore = create<GameStore>()(
           isPaused: false,
           highCoins: newHighCoins,
           leaderboard: ranked,
+          stats: { ...state.stats, coinsEarnedThisSession: state.sessionCoins },
         });
       },
 
@@ -315,6 +369,28 @@ const useGameStore = create<GameStore>()(
           exp: didLevelUp ? nextExp - levelUpThreshold : nextExp,
           level: didLevelUp ? state.level + 1 : state.level,
         });
+
+        const nextTypeCounts = { ...state.stats.customerTypeCounts };
+        nextTypeCounts[current.type] = (nextTypeCounts[current.type] || 0) + 1;
+        const nextItemCounts = { ...state.stats.itemSoldCounts };
+        current.order.items.forEach(function countItem(item: any) {
+          nextItemCounts[item.id] = (nextItemCounts[item.id] || 0) + 1;
+        });
+        const sodaChaiSold = current.order.items.reduce(function countSoda(
+          total: number,
+          item: any,
+        ) {
+          return total + (item.id === 'soda_chai' ? 1 : 0);
+        },
+        0);
+        set({
+          stats: {
+            ...state.stats,
+            customerTypeCounts: nextTypeCounts,
+            itemSoldCounts: nextItemCounts,
+            totalSodaChaiSold: state.stats.totalSodaChaiSold + sodaChaiSold,
+          },
+        });
       },
 
       finalizeServeCurrentCustomer: () => {
@@ -323,7 +399,7 @@ const useGameStore = create<GameStore>()(
         set({ customers: state.customers.slice(1) });
       },
 
-      serveCurrentCustomerWrong: () => {
+      serveCurrentCustomerWrong: (missingCount?: number) => {
         const state = get();
         if (state.customers.length === 0) return;
         const current = state.customers[0];
@@ -345,6 +421,18 @@ const useGameStore = create<GameStore>()(
         set({ coins: Math.max(0, state.coins - penaltyCoins) });
         set({ sessionCoins: Math.max(0, state.sessionCoins - penaltyCoins) });
         set({ currentScore: Math.max(0, state.currentScore - penaltyScore) });
+
+        const nextWrong = state.stats.wrongServeCount + 1;
+        const nextOut =
+          state.stats.outOfStockCount +
+          Math.max(0, Math.min(1, missingCount || 0));
+        set({
+          stats: {
+            ...state.stats,
+            wrongServeCount: nextWrong,
+            outOfStockCount: nextOut,
+          },
+        });
       },
 
       // Score management
@@ -546,6 +634,9 @@ const useGameStore = create<GameStore>()(
         maxEnergy: state.maxEnergy,
         lastEnergyAt: state.lastEnergyAt,
         lastEnergyResetDate: state.lastEnergyResetDate,
+        journal: state.journal,
+        journeyDay: state.journeyDay,
+        stats: state.stats,
       }),
     },
   ),

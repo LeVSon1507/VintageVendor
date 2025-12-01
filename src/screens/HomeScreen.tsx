@@ -95,7 +95,7 @@ function HomeScreen(): React.ReactElement {
             style={styles.secondaryButton}
             onPress={handleOpenLeaderboard}
           >
-            <Text style={styles.secondaryButtonText}>{t('leaderboard')}</Text>
+            <Text style={styles.secondaryButtonText}>Nhật kí</Text>
           </TouchableOpacity>
         </View>
       </View>
