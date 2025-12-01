@@ -4,6 +4,7 @@ import { Order } from '../types';
 import { t } from '../i18n';
 import { getItemName, getIngredientName } from '../i18n/names';
 import { getItemImage } from '../game/assets';
+import { trReq } from '../i18n/requirements';
 
 type OrderCardProps = {
   order: Order;
@@ -45,9 +46,7 @@ function OrderCard(props: OrderCardProps): React.ReactElement {
                   {item.requirements.map(function renderReq(req) {
                     return (
                       <View key={req} style={styles.requirementPillSmall}>
-                        <Text style={styles.requirementPillTextSmall}>
-                          {req}
-                        </Text>
+                        <Text style={styles.requirementPillTextSmall}>{trReq(req)}</Text>
                       </View>
                     );
                   })}

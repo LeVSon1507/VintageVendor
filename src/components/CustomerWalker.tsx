@@ -184,10 +184,14 @@ function CustomerWalker(props: CustomerWalkerProps): React.ReactElement {
               {Array.isArray((bubbleItem as any).requirements) &&
               (bubbleItem as any).requirements.length > 0 ? (
                 <View style={styles.bubbleReqRow}>
-                  <Text style={styles.bubbleReqLabel}>Yêu cầu:</Text>
+                  <Text style={styles.bubbleReqLabel}>
+                    {require('../i18n').t('requirementLabel')}
+                  </Text>
                   {(bubbleItem as any).requirements.map((req: string) => (
                     <View key={req} style={styles.bubbleReqPill}>
-                      <Text style={styles.bubbleReqText}>{req}</Text>
+                      <Text style={styles.bubbleReqText}>
+                        {require('../i18n/requirements').trReq(req)}
+                      </Text>
                     </View>
                   ))}
                 </View>
