@@ -22,6 +22,9 @@ import { compileSelectedDish } from '../game/combine';
 import CustomerWalker from '../components/CustomerWalker';
 import PauseBanner from '../components/PauseBanner';
 import RecipeModal from '../components/RecipeModal';
+import AdPromptModal from '../components/AdPromptModal';
+import { getRecipeById } from '../game/recipes';
+import Ads from '../services/AdsManager';
 import {
   startAmbient,
   stopAmbient,
@@ -153,6 +156,9 @@ function GameScreen(): React.ReactElement {
   const [showRecipeModal, setShowRecipeModal] = useState<boolean>(false);
   const [hintCount, setHintCount] = useState<number>(3);
   const [categoryHintKey, setCategoryHintKey] = useState<string | null>(null);
+  const [showAdModal, setShowAdModal] = useState<boolean>(false);
+  const [adLoading, setAdLoading] = useState<boolean>(false);
+  const [pausedByAd, setPausedByAd] = useState<boolean>(false);
 
   useEffect(
     function startTimer() {
@@ -162,8 +168,10 @@ function GameScreen(): React.ReactElement {
       }
       intervalRef.current = setInterval(function tick() {
         if (acceptedOrder) {
-          const dec = useGameStore.getState().decrementTime;
-          dec();
+          const store = useGameStore.getState();
+          if (!store.isPaused) {
+            store.decrementTime();
+          }
         }
       }, 1000);
       return function cleanup() {
@@ -303,14 +311,38 @@ function GameScreen(): React.ReactElement {
     return { id: missingId, category: cat };
   }
 
-  function showAdPrompt(kind: 'HINT'): void {
-    setNpcHint('Xem quảng cáo để nhận gợi ý');
+  async function showAdPrompt(kind: 'HINT'): Promise<void> {
+    setAdLoading(true);
+    const ok = await Ads.showRewarded(function onReward() {
+      setHintCount(function inc(prev) {
+        return prev + 3;
+      });
+    }, 'HINT');
+    setAdLoading(false);
+    setShowAdModal(false);
+    if (!ok) {
+      // no-op if failed; hints unchanged
+    }
   }
 
-  function handleHint(): void {
+  useEffect(
+    function pauseOnAdModal() {
+      const store = useGameStore.getState();
+      if (showAdModal && !store.isPaused) {
+        store.pauseGame();
+        setPausedByAd(true);
+      } else if (!showAdModal && pausedByAd) {
+        store.resumeGame();
+        setPausedByAd(false);
+      }
+    },
+    [showAdModal, pausedByAd],
+  );
+
+  async function handleHint(): Promise<void> {
     if (actionDisabled || customers.length === 0) return;
     if (hintCount <= 0) {
-      showAdPrompt('HINT');
+      setShowAdModal(true);
       return;
     }
     const next = findNextMissingIngredient();
@@ -349,20 +381,47 @@ function GameScreen(): React.ReactElement {
       if (customers.length === 0 || acceptedOrder) return;
       const reqs: string[] =
         (customers[0].order.items[0] as any).requirements || [];
+      const itemId = customers[0].order.items[0].id;
+      const rec = getRecipeById(itemId);
       const p = Math.random();
       if (p < 0.06) {
         const map: Record<string, string> = {
           'Thêm đá': 'Nhớ cho đúng phần đá nghen!',
           'Ít đá': 'Cho ít đá thôi nghen!',
+          'Không đá': 'Không cho đá nhé!',
           'Ít đường': 'Ít đường thôi!',
           'Không cay': 'Không cay dùm nhé!',
           Cay: 'Cho cay cay giùm!',
           Nóng: 'Làm nóng giùm!',
           Lạnh: 'Làm lạnh giùm!',
         };
-        const candidates = reqs.filter(r => typeof map[r] === 'string');
-        const msg =
-          candidates.length > 0 ? map[candidates[0]] : 'Nhớ pha cho đúng nhé!';
+        const allowed = reqs.filter(function ok(r) {
+          if (!rec) return typeof map[r] === 'string';
+          if (rec.temperature === 'Hot') {
+            if (
+              r === 'Lạnh' ||
+              r === 'Thêm đá' ||
+              r === 'Ít đá' ||
+              r === 'Không đá'
+            )
+              return false;
+          }
+          if (rec.temperature === 'Cold') {
+            if (r === 'Nóng') return false;
+          }
+          return typeof map[r] === 'string';
+        });
+        let msg = '';
+        if (allowed.length > 0) {
+          msg = map[allowed[0]];
+        } else if (rec) {
+          msg =
+            rec.temperature === 'Hot'
+              ? 'Làm nóng giùm nhé!'
+              : 'Nhớ cho đúng phần đá nhé!';
+        } else {
+          msg = 'Nhớ pha cho đúng nhé!';
+        }
         setNpcHint(msg);
       } else {
         setNpcHint('');
@@ -603,11 +662,12 @@ function GameScreen(): React.ReactElement {
                 </View>
                 <View style={styles.actionItem}>
                   <TouchableOpacity
-                    style={[styles.secondaryButtonSmall, styles.fullButton]}
+                    style={[styles.hintButton, styles.fullButton]}
                     onPress={handleHint}
                   >
                     <Text style={styles.secondaryButtonText}>
-                      💡 {t('hint')} (x{hintCount})
+                      {hintCount === 0 || showAdModal ? '▶️ ' : '💡 '}
+                      {t('hint')} (x{hintCount})
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -632,7 +692,22 @@ function GameScreen(): React.ReactElement {
           />
         </View>
       ) : null}
-      {isPaused ? (
+      {showAdModal ? (
+        <View style={styles.globalOverlay} pointerEvents="auto">
+          <View style={styles.globalDim} />
+          <AdPromptModal
+            visible={showAdModal}
+            loading={adLoading}
+            onClose={() => setShowAdModal(false)}
+            onWatchAd={() => {
+              // run rewarded ad flow
+              void showAdPrompt('HINT');
+            }}
+            title={'Gợi ý'}
+          />
+        </View>
+      ) : null}
+      {isPaused && !showAdModal ? (
         <View style={styles.globalOverlay} pointerEvents="auto">
           <View style={styles.globalDim} />
           <PauseBanner
@@ -785,6 +860,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 8,
   },
+  hintButton: {
+    backgroundColor: '#FFD54F',
+    paddingVertical: 8,
+    alignItems: 'center',
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+  },
   pauseButtonSmall: {
     backgroundColor: '#D2B48C',
     paddingVertical: 8,
@@ -838,7 +923,15 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   chipScaleSelected: { transform: [{ scale: 1.05 }] },
-  chipHint: { borderWidth: 1, borderColor: '#8B4513' },
+  chipHint: {
+    borderWidth: 2,
+    borderColor: '#FFD54F',
+    shadowColor: '#FFD54F',
+    shadowOpacity: 0.45,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 3,
+  },
   chipImage: { width: 24, height: 24, marginRight: 6 },
   chipText: { color: '#3B2F2F', fontWeight: '500' },
   chipTextSelected: { color: '#FFF8E1', fontWeight: '600' },

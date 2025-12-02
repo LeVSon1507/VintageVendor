@@ -63,6 +63,7 @@ export type RecipeDefinition = {
   ingredients: Ingredient[];
   basePrice: number;
   preparationTime: number;
+  temperature: 'Hot' | 'Cold';
 };
 
 export const RECIPE_CATALOG: RecipeDefinition[] = Recipes.map(function toDef(r) {
@@ -84,6 +85,7 @@ export const RECIPE_CATALOG: RecipeDefinition[] = Recipes.map(function toDef(r) 
     ingredients,
     basePrice,
     preparationTime,
+    temperature: r.temperature,
   };
 });
 
