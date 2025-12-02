@@ -1,113 +1,89 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# RetroMart – Tạp hoá thời 9x
 
-# Getting Started
+RetroMart là game quản lý cửa hàng phong cách pixel-art, đưa bạn trở về không khí tạp hoá Việt Nam thời 9x. Bày bán món quen thuộc, trang trí cửa hàng bằng đồ vintage, ghi nhật kí hành trình và thi đua bảng xếp hạng cùng bạn bè.
+RetroMart is a pixel‑art shop management game that brings back the vibe of 90s Vietnamese convenience stores. Sell familiar items, decorate with vintage objects, keep a journal, and compete on the leaderboard.
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+## Mô tả ngắn (CH Play)
 
-## Step 1: Start Metro
+Quản lý tạp hoá 9x: bán món vintage, nâng cấp cửa hàng, ghi nhật kí, thi đua.
+Manage a 90s grocery: sell vintage items, upgrade the shop, journal, compete.
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+## Mô tả chi tiết
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+Trong RetroMart, bạn mở một tiệm tạp hoá nhỏ, tự tay chế biến và bày bán các món quen thuộc như cà phê vợt, sữa đậu nành, bánh mì thịt, chè, xiên que, bánh bò, soda đá chanh. Kiếm tiền, đầu tư trang trí và mở rộng cửa hàng theo phong cách hoài niệm.
+In RetroMart, you open a small convenience store, prepare and sell familiar treats like sock coffee, soy milk, banh mi, che dessert, skewers, banh bo cake, lime soda. Earn coins, invest in decor, and expand in a nostalgic style.
 
-```sh
-# Using npm
-npm start
+### Tính năng chính
 
-# OR using Yarn
-yarn start
-```
+- Quản lý cửa hàng: sắp xếp, trang trí, nâng cấp để phục vụ nhanh hơn.
+- Shop management: arrange, decorate, upgrade for faster service.
+- Đồ trang trí vintage: Radio retro, đèn neon, bàn ghế vintage, biển hiệu cổ điển, xe đẩy cao cấp.
+- Vintage decorations: retro radio, neon light, vintage tables, classic sign, premium cart.
+- Công thức món 9x: mở khoá nguyên liệu, pha chế và phục vụ khách.
+- 90s recipes: unlock ingredients, mix and serve.
+- Nhật kí cửa hàng: ghi lại cột mốc mỗi ngày.
+- Shop journal: record daily milestones.
+- Bảng xếp hạng: cạnh tranh điểm số với bạn bè.
+- Leaderboard: compete with friends.
+- Đa ngôn ngữ: Tiếng Việt và English.
+- Multilingual: Vietnamese and English.
 
-## Step 2: Build and run your app
+### Lối chơi
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
+- Bán hàng để thu coin, tái đầu tư vào trang trí và nâng cấp.
+- Sell to earn coins, reinvest in decor and upgrades.
+- Mở khoá công thức mới để đa dạng sản phẩm.
+- Unlock new recipes to diversify the menu.
+- Quản lý thời gian phục vụ nhằm tối ưu doanh thu.
+- Manage serving time to optimize revenue.
 
-### Android
+## Dùng cho CH Play
 
-```sh
-# Using npm
-npm run android
+- Tên ứng dụng: RetroMart – Tạp hoá thời 9x.
+- App name: RetroMart – 90s Grocery.
+- Mô tả ngắn: 80 ký tự, dùng phần “Mô tả ngắn” ở trên.
+- Short description: 80 characters, use the “Mô tả ngắn” above.
+- Mô tả đầy đủ: sử dụng phần “Mô tả chi tiết”.
+- Full description: use the “Mô tả chi tiết”.
+- Từ khoá gợi ý: retro, tạp hoá, 9x, vintage, pixel art, quản lý.
+- Suggested keywords: retro, grocery, 9x, vintage, pixel art, management.
+- Ảnh chụp màn hình: thiết bị điện thoại (tỷ lệ 16:9/19.5:9), chụp các màn hình Home, Store, Journal, Leaderboard.
+- Screenshots: phone devices (16:9/19.5:9), capture Home, Store, Journal, Leaderboard.
+- Biểu tượng và đồ hoạ: icon ứng dụng 512×512, feature graphic 1024×500.
+- Icon & graphics: app icon 512×512, feature graphic 1024×500.
+- Chính sách quyền riêng tư: thêm liên kết nếu ứng dụng thu thập dữ liệu; nếu không, nêu rõ không thu thập dữ liệu cá nhân.
+- Privacy policy: add a link if data is collected; otherwise state no personal data collected.
+- Xếp hạng nội dung: lựa chọn mức phù hợp với game mô phỏng nhẹ.
+- Content rating: choose a level suitable for a light simulation game.
 
-# OR using Yarn
-yarn android
-```
+## Ngôn ngữ và i18n
 
-### iOS
+- Ứng dụng hỗ trợ Tiếng Việt và English.
+- The app supports Vietnamese and English.
+- Tên vật phẩm trong Store hiển thị theo ngôn ngữ đã chọn.
+- Store item names follow the selected language.
+- Nhãn màn hình như “Nhật kí” sử dụng hệ thống dịch i18n.
+- Screen labels like “Journal” use the i18n system.
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
+## Kỹ thuật & cấu trúc dự án
 
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
+- Nền tảng: React Native.
+- Platform: React Native.
+- Hệ i18n: khoá dịch cho nhãn màn hình và tên vật phẩm.
+- i18n system: translation keys for screen labels and item names.
+- Tài nguyên hình ảnh: lưu dưới `assets/images/` theo cấu trúc `assets/images/<item_id>.png`.
+- Image assets: store under `assets/images/` with `assets/images/<item_id>.png`.
+- Registry ảnh tham chiếu trong `src/game/assets.ts` (có thể dùng CDN hoặc file cục bộ).
+- Image registry referenced in `src/game/assets.ts` (CDN or local files).
 
-```sh
-bundle install
-```
+## Đóng góp & hỗ trợ
 
-Then, and every time you update your native dependencies, run:
+- Mở issue trên kho lưu trữ nếu gặp lỗi hoặc cần hỗ trợ.
+- Open an issue if you encounter problems or need support.
+- Đề xuất tính năng mới qua pull request.
+- Propose new features via pull request.
 
-```sh
-bundle exec pod install
-```
+---
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
-
-```sh
-# Using npm
-npm run ios
-
-# OR using Yarn
-yarn ios
-```
-
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
-
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
-
-## Step 3: Modify your app
-
-Now that you have successfully run the app, let's make changes!
-
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
-
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
-
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
-
-## Congratulations! :tada:
-
-You've successfully run and modified your React Native App. :partying_face:
-
-### Now what?
-
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
-
-# Troubleshooting
-
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
-## Assets (Pixel Art Vintage)
-
-Place your item images under `assets/images/` and reference them via a simple registry. This project currently uses placeholder URLs in `src/game/assets.ts`.
-
-- Recommended structure: `assets/images/<item_id>.png` (e.g., `cafe_vot.png`, `banh_mi_thit.png`)
-- Update the `imageUri` field in `src/game/assets.ts` to your CDN/local file scheme.
-- Pixel art size: 32–64px with a vintage Saigon/Hanoi palette works well.
-
-Vintage items in recipes: `cafe_vot`, `sua_dau_nanh`, `banh_mi_thit`, `che`, `xien_que`, `banh_bo`, `soda_da_chanh`.
-
-You can swap remote URLs with local requires once icons are added:
-
-```ts
-// assets.ts (example)
-imageUri: Image.resolveAssetSource(require('../../assets/images/cafe_vot.png')).uri
-```
+RetroMart hướng tới trải nghiệm hoài cổ, nhẹ nhàng và dễ tiếp cận cho mọi người yêu văn hoá Việt thời 9x.
+RetroMart aims for a nostalgic, gentle, and accessible experience for everyone who loves Vietnamese 90s culture.

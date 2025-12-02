@@ -61,7 +61,6 @@ function GameScreen(): React.ReactElement {
   const intervalRef = useRef<number | null>(null);
 
   // timer effect will be defined after acceptedOrder
-
   useEffect(
     function setupAmbient() {
       startAmbient(settings.musicVolume);
@@ -133,14 +132,6 @@ function GameScreen(): React.ReactElement {
     act();
   }
 
-  function handleSpawn(): void {
-    spawnCustomerWithOrder();
-  }
-
-  function handleServeWrong(): void {
-    serveCurrentCustomerWrong();
-  }
-
   const [selectedIngredientIds, setSelectedIngredientIds] = useState<string[]>(
     [],
   );
@@ -156,7 +147,6 @@ function GameScreen(): React.ReactElement {
   const resumeGame = useGameStore(state => state.resumeGame);
   const getRecipeHint = useGameStore(state => state.getRecipeHint);
   const dailyFreeHints = useGameStore(state => state.dailyFreeHints);
-  const hintTokens = useGameStore(state => state.hintTokens);
   const [hintIds, setHintIds] = useState<string[]>([]);
   const [npcHint, setNpcHint] = useState<string>('');
 
@@ -417,7 +407,9 @@ function GameScreen(): React.ReactElement {
                 remaining={timeRemaining}
               />
             ) : null}
-            <View style={acceptedOrder ? { marginTop: -20 } : undefined}>
+            <View
+              style={acceptedOrder ? styles.acceptedOrderOffset : undefined}
+            >
               <CustomerWalker
                 key={customers[0].id}
                 customer={customers[0]}
@@ -519,7 +511,7 @@ function GameScreen(): React.ReactElement {
               </ScrollView>
             )}
             {acceptedOrder && (
-              <View style={[styles.row, { marginTop: 4 }]}>
+              <View style={styles.rowSmallMargin}>
                 <Text style={styles.hint}>{t('youSelected')}</Text>
               </View>
             )}
@@ -705,6 +697,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  rowSmallMargin: {
+    flexDirection: 'row',
+    marginTop: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -827,6 +825,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     backgroundColor: 'rgba(139, 69, 19, 0.18)',
   },
+  acceptedOrderOffset: { marginTop: -20 },
 });
 
 export default GameScreen;

@@ -1,11 +1,10 @@
 let Sound: any = null;
 try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
   Sound = require('react-native-sound');
   if (Sound && Sound.setCategory) {
     Sound.setCategory('Ambient', true);
   }
-} catch (e) {
+} catch {
   Sound = null;
 }
 

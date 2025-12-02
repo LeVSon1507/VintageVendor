@@ -23,4 +23,3 @@ export function createRng(seed?: number): RNG {
 
   return { nextFloat, nextInt, chance };
 }
-

@@ -21,6 +21,7 @@ interface GameStore {
   timeRemaining: number;
   gameStartTime: number;
   isPaused: boolean;
+  refreshEnergy: () => void;
 
   // Progression
   coins: number;

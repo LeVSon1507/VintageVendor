@@ -5,12 +5,12 @@ import { StatusBar } from 'react-native';
 
 // Screens
 import HomeScreen from '../screens/HomeScreen';
-import GameScreen from '../screens/GameScreen';
 import GameOverScreen from '../screens/GameOverScreen';
 import PhotoModeScreen from '../screens/PhotoModeScreen';
 import LeaderboardScreen from '../screens/LeaderboardScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import StoreListScreen from '../screens/StoreListScreen';
+import GameScreen from '../screens/GameScreen';
 
 // Types
 import { RootStackParamList } from '../types';
@@ -71,10 +71,7 @@ function RootNavigator(): React.ReactElement {
             presentation: 'modal',
           }}
         />
-        <Stack.Screen
-          name="StoreList"
-          component={StoreListScreen}
-        />
+        <Stack.Screen name="StoreList" component={StoreListScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

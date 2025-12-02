@@ -12,6 +12,9 @@ import {
 import { Customer, OrderItem } from '../types';
 import { getCharacterFrames } from '../game/characters';
 import { getItemImage } from '../game/assets';
+import { t } from '../i18n';
+import { trReq } from '../i18n/requirements';
+import { getItemName } from '../i18n/names';
 
 export type CustomerWalkerProps = {
   customer: Customer;
@@ -118,10 +121,7 @@ function CustomerWalker(props: CustomerWalkerProps): React.ReactElement {
   return (
     <View style={styles.container}>
       <Animated.View
-        style={[
-          styles.avatarWrap,
-          { transform: [{ translateX }], position: 'relative' },
-        ]}
+        style={[styles.avatarWrap, { transform: [{ translateX }] }]}
       >
         {coinText && coinText !== '' && coinAnim && (
           <Animated.View
@@ -178,7 +178,7 @@ function CustomerWalker(props: CustomerWalkerProps): React.ReactElement {
             />
             <View style={styles.bubbleInfo}>
               <Text style={styles.bubbleTitle}>
-                {require('../i18n/names').getItemName(bubbleItem.id)}
+                {getItemName(bubbleItem.id)}
               </Text>
               <Text style={styles.bubbleSub}>
                 {bubbleItem.price}₫ • {bubbleItem.preparationTime}s
@@ -190,13 +190,11 @@ function CustomerWalker(props: CustomerWalkerProps): React.ReactElement {
               (bubbleItem as any).requirements.length > 0 ? (
                 <View style={styles.bubbleReqRow}>
                   <Text style={styles.bubbleReqLabel}>
-                    {require('../i18n').t('requirementLabel')}
+                    {t('requirementLabel')}
                   </Text>
                   {(bubbleItem as any).requirements.map((req: string) => (
                     <View key={req} style={styles.bubbleReqPill}>
-                      <Text style={styles.bubbleReqText}>
-                        {require('../i18n/requirements').trReq(req)}
-                      </Text>
+                      <Text style={styles.bubbleReqText}>{trReq(req)}</Text>
                     </View>
                   ))}
                 </View>
@@ -207,9 +205,7 @@ function CustomerWalker(props: CustomerWalkerProps): React.ReactElement {
             style={styles.bubbleButton}
             onPress={() => onAcceptOrder && onAcceptOrder(customer.id)}
           >
-            <Text style={styles.bubbleButtonText}>
-              {require('../i18n').t('acceptOrder')}
-            </Text>
+            <Text style={styles.bubbleButtonText}>{t('acceptOrder')}</Text>
           </TouchableOpacity>
           <View style={styles.bubblePointer} />
         </Animated.View>
@@ -226,16 +222,17 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     marginBottom: 12,
   },
-  avatarWrap: { marginRight: 8 },
+  avatarWrap: { marginRight: 8, position: 'relative' },
   avatarImg: { width: 42, height: 42 },
-  reactionAbove: { position: 'absolute', top: -22, left: 0 },
+  reactionAbove: { position: 'absolute', top: -18, left: -20, zIndex: 3 },
   reactionHappy: { fontSize: 20 },
   reactionAngry: { fontSize: 20 },
   coinWrap: {
-    alignSelf: 'center',
-    marginBottom: 4,
+    paddingHorizontal: 6,
+    minWidth: 40,
+    alignItems: 'center',
   },
-  coinText: { color: '#8B4513', fontWeight: '700' },
+  coinText: { color: '#8B4513', fontWeight: '700', fontSize: 14 },
   bubble: {
     backgroundColor: '#FAF8F2',
     paddingVertical: 10,
