@@ -21,6 +21,7 @@ import { getIngredientName } from '../i18n/names';
 import { compileSelectedDish } from '../game/combine';
 import CustomerWalker from '../components/CustomerWalker';
 import PauseBanner from '../components/PauseBanner';
+import RecipeModal from '../components/RecipeModal';
 import {
   startAmbient,
   stopAmbient,
@@ -149,6 +150,9 @@ function GameScreen(): React.ReactElement {
   const dailyFreeHints = useGameStore(state => state.dailyFreeHints);
   const [hintIds, setHintIds] = useState<string[]>([]);
   const [npcHint, setNpcHint] = useState<string>('');
+  const [showRecipeModal, setShowRecipeModal] = useState<boolean>(false);
+  const [hintCount, setHintCount] = useState<number>(3);
+  const [categoryHintKey, setCategoryHintKey] = useState<string | null>(null);
 
   useEffect(
     function startTimer() {
@@ -273,12 +277,54 @@ function GameScreen(): React.ReactElement {
     playClick(settings.soundVolume);
   }
 
+  function findNextMissingIngredient(): {
+    id: string | null;
+    category: string | null;
+  } {
+    if (!acceptedOrder || customers.length === 0)
+      return { id: null, category: null };
+    const reqIds = customers[0].order.items[0].ingredients.map(function toId(
+      i,
+    ) {
+      return i.id;
+    });
+    const missingId =
+      reqIds.find(function firstMissing(id) {
+        return !selectedIngredientIds.includes(id);
+      }) ?? null;
+    if (!missingId) return { id: null, category: null };
+    const categories = Object.keys(INGREDIENT_CATEGORIES);
+    const cat =
+      categories.find(function has(idCat) {
+        const list =
+          INGREDIENT_CATEGORIES[idCat as keyof typeof INGREDIENT_CATEGORIES];
+        return list.includes(missingId);
+      }) ?? null;
+    return { id: missingId, category: cat };
+  }
+
+  function showAdPrompt(kind: 'HINT'): void {
+    setNpcHint('Xem quảng cáo để nhận gợi ý');
+  }
+
   function handleHint(): void {
     if (actionDisabled || customers.length === 0) return;
-    const itemId = customers[0].order.items[0].id;
-    const picked = getRecipeHint(itemId);
-    if (picked && picked.length > 0) {
-      setHintIds(picked);
+    if (hintCount <= 0) {
+      showAdPrompt('HINT');
+      return;
+    }
+    const next = findNextMissingIngredient();
+    setHintIds([]);
+    setCategoryHintKey(null);
+    if (next.id && next.category) {
+      if (next.category === activeCategory) {
+        setHintIds([next.id]);
+      } else {
+        setCategoryHintKey(next.category);
+      }
+      setHintCount(function dec(prev) {
+        return Math.max(0, prev - 1);
+      });
     }
   }
 
@@ -449,14 +495,16 @@ function GameScreen(): React.ReactElement {
                   return (
                     <TouchableOpacity
                       key={key}
-                      style={
+                      style={[
                         isActive
                           ? styles.categoryChipActive
-                          : styles.categoryChip
-                      }
+                          : styles.categoryChip,
+                        categoryHintKey === key ? styles.categoryHint : null,
+                      ]}
                       onPress={() => {
                         if (actionDisabled) return;
                         setActiveCategory(key);
+                        setCategoryHintKey(null);
                       }}
                     >
                       <Text style={styles.categoryText}>{labelMap[key]}</Text>
@@ -545,7 +593,7 @@ function GameScreen(): React.ReactElement {
                 <View style={styles.actionItem}>
                   <TouchableOpacity
                     style={[styles.secondaryButtonSmall, styles.fullButton]}
-                    onPress={() => {}}
+                    onPress={() => setShowRecipeModal(true)}
                     accessibilityLabel={t('recipes')}
                   >
                     <Text style={styles.secondaryButtonText}>
@@ -559,7 +607,7 @@ function GameScreen(): React.ReactElement {
                     onPress={handleHint}
                   >
                     <Text style={styles.secondaryButtonText}>
-                      💡 {t('hint')} (x{dailyFreeHints})
+                      💡 {t('hint')} (x{hintCount})
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -573,6 +621,15 @@ function GameScreen(): React.ReactElement {
           <TouchableOpacity style={styles.deliverButton} onPress={handleServe}>
             <Text style={styles.sampleButtonText}>{t('deliverDish')}</Text>
           </TouchableOpacity>
+        </View>
+      ) : null}
+      {showRecipeModal ? (
+        <View style={styles.globalOverlay} pointerEvents="auto">
+          <View style={styles.globalDim} />
+          <RecipeModal
+            visible={showRecipeModal}
+            onClose={() => setShowRecipeModal(false)}
+          />
         </View>
       ) : null}
       {isPaused ? (
@@ -750,6 +807,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginHorizontal: 6,
   },
+  categoryHint: { borderWidth: 2, borderColor: '#FFD54F' },
   categoryText: { color: '#3B2F2F' },
   ingredientsScroll: { paddingHorizontal: 12, marginTop: 6 },
   chip: {

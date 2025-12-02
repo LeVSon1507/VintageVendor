@@ -1,4 +1,61 @@
-import { Ingredient, OrderItem } from '../types';
+import { getItemImage, getIngredientImage } from '../game/assets';
+import { getIngredientName, getItemName } from '../i18n/names';
+import { OrderItem, Ingredient } from '../types';
+
+export type Temperature = 'Hot' | 'Cold';
+
+export type Recipe = {
+  id: string;
+  name: string;
+  requiredIngredients: string[];
+  temperature: Temperature;
+  resultIcon: any;
+};
+
+export const Recipes: Recipe[] = [
+  {
+    id: 'cafe_vot',
+    name: 'Cà phê nóng',
+    requiredIngredients: ['bot_ca_phe', 'nuoc_soi'],
+    temperature: 'Hot',
+    resultIcon: getItemImage('cafe_vot'),
+  },
+  {
+    id: 'sua_dau_nanh',
+    name: 'Sữa đậu nành lạnh',
+    requiredIngredients: ['dau_nanh', 'nuoc_duong', 'da_vien'],
+    temperature: 'Cold',
+    resultIcon: getItemImage('sua_dau_nanh'),
+  },
+  {
+    id: 'soda_da_chanh',
+    name: 'Soda đá chanh',
+    requiredIngredients: ['soda', 'chanh', 'nuoc_duong', 'da_vien'],
+    temperature: 'Cold',
+    resultIcon: getItemImage('soda_da_chanh'),
+  },
+  {
+    id: 'banh_mi_thit',
+    name: 'Bánh mì thịt',
+    requiredIngredients: ['banh_mi', 'thit_nguoi', 'do_chua', 'tuong_ot'],
+    temperature: 'Hot',
+    resultIcon: getItemImage('banh_mi_thit'),
+  },
+  {
+    id: 'che',
+    name: 'Chè',
+    requiredIngredients: ['hat_che', 'nuoc_duong', 'nuoc_cot_dua', 'da_vien'],
+    temperature: 'Cold',
+    resultIcon: getItemImage('che'),
+  },
+  {
+    id: 'xien_que',
+    name: 'Xiên que',
+    requiredIngredients: ['thit_xien', 'gia_vi'],
+    temperature: 'Hot',
+    resultIcon: getItemImage('xien_que'),
+  },
+];
 
 export type RecipeDefinition = {
   id: string;
@@ -8,129 +65,36 @@ export type RecipeDefinition = {
   preparationTime: number;
 };
 
-export const RECIPE_CATALOG: RecipeDefinition[] = [
-  {
-    id: 'cafe_vot',
-    name: 'Cà phê vợt',
-    ingredients: [
-      { id: 'bot_ca_phe', name: 'Bột cà phê', type: 'powder', quantity: 15, unit: 'g' },
-      { id: 'nuoc_soi', name: 'Nước sôi', type: 'liquid', quantity: 150, unit: 'ml' },
-      { id: 'duong', name: 'Đường', type: 'powder', quantity: 10, unit: 'g' },
-    ],
-    basePrice: 12000,
-    preparationTime: 18,
-  },
-  {
-    id: 'sua_dau_nanh',
-    name: 'Sữa đậu nành',
-    ingredients: [
-      { id: 'dau_nanh', name: 'Đậu nành', type: 'solid', quantity: 50, unit: 'g' },
-      { id: 'nuoc', name: 'Nước', type: 'liquid', quantity: 200, unit: 'ml' },
-      { id: 'duong', name: 'Đường', type: 'powder', quantity: 10, unit: 'g' },
-    ],
-    basePrice: 8000,
-    preparationTime: 12,
-  },
-  {
-    id: 'banh_mi_thit',
-    name: 'Bánh mì thịt',
-    ingredients: [
-      { id: 'banh_mi', name: 'Bánh mì', type: 'solid', quantity: 1, unit: 'piece' },
-      { id: 'thit_nguoi', name: 'Thịt nguội', type: 'solid', quantity: 50, unit: 'g' },
-      { id: 'do_chua', name: 'Đồ chua', type: 'solid', quantity: 30, unit: 'g' },
-      { id: 'tuong_ot', name: 'Tương ớt', type: 'liquid', quantity: 10, unit: 'ml' },
-    ],
-    basePrice: 18000,
-    preparationTime: 15,
-  },
-  {
-    id: 'che',
-    name: 'Chè',
-    ingredients: [
-      { id: 'hat_che', name: 'Hạt chè', type: 'solid', quantity: 50, unit: 'g' },
-      { id: 'nuoc_duong', name: 'Nước đường', type: 'liquid', quantity: 150, unit: 'ml' },
-      { id: 'da_vien', name: 'Đá viên', type: 'solid', quantity: 6, unit: 'piece' },
-    ],
-    basePrice: 10000,
-    preparationTime: 10,
-  },
-  {
-    id: 'xien_que',
-    name: 'Xiên que',
-    ingredients: [
-      { id: 'thit_xien', name: 'Thịt xiên', type: 'solid', quantity: 60, unit: 'g' },
-      { id: 'gia_vi', name: 'Gia vị', type: 'powder', quantity: 5, unit: 'g' },
-    ],
-    basePrice: 15000,
-    preparationTime: 8,
-  },
-  {
-    id: 'banh_bo',
-    name: 'Bánh bò',
-    ingredients: [
-      { id: 'banh_bo_nguyen_lieu', name: 'Bánh bò', type: 'solid', quantity: 1, unit: 'piece' },
-      { id: 'nuoc_cot_dua', name: 'Nước cốt dừa', type: 'liquid', quantity: 20, unit: 'ml' },
-    ],
-    basePrice: 7000,
-    preparationTime: 6,
-  },
-  {
-    id: 'soda_da_chanh',
-    name: 'Soda đá chanh',
-    ingredients: [
-      { id: 'soda', name: 'Soda', type: 'liquid', quantity: 200, unit: 'ml' },
-      { id: 'chanh', name: 'Chanh', type: 'solid', quantity: 1, unit: 'piece' },
-      { id: 'da_vien', name: 'Đá viên', type: 'solid', quantity: 6, unit: 'piece' },
-    ],
-    basePrice: 12000,
-    preparationTime: 9,
-  },
-  {
-    id: 'soda_chai',
-    name: 'Soda chai',
-    ingredients: [
-      { id: 'soda', name: 'Soda', type: 'liquid', quantity: 330, unit: 'ml' },
-    ],
-    basePrice: 10000,
-    preparationTime: 3,
-  },
-  {
-    id: 'xien_que_tuong_ot',
-    name: 'Xiên que tương ớt',
-    ingredients: [
-      { id: 'thit_xien', name: 'Thịt xiên', type: 'solid', quantity: 60, unit: 'g' },
-      { id: 'tuong_ot', name: 'Tương ớt', type: 'liquid', quantity: 10, unit: 'ml' },
-      { id: 'tieu', name: 'Tiêu', type: 'powder', quantity: 2, unit: 'g' },
-    ],
-    basePrice: 17000,
-    preparationTime: 9,
-  },
-  {
-    id: 'ca_vien_chien',
-    name: 'Cá viên chiên',
-    ingredients: [
-      { id: 'ca_vien', name: 'Cá viên', type: 'solid', quantity: 80, unit: 'g' },
-      { id: 'dua_leo', name: 'Dưa leo', type: 'solid', quantity: 20, unit: 'g' },
-      { id: 'rau_que', name: 'Rau quế', type: 'garnish', quantity: 5, unit: 'g' },
-    ],
-    basePrice: 16000,
-    preparationTime: 8,
-  },
-  {
-    id: 'soda_chanh_muoi',
-    name: 'Soda chanh muối',
-    ingredients: [
-      { id: 'soda', name: 'Soda', type: 'liquid', quantity: 200, unit: 'ml' },
-      { id: 'chanh', name: 'Chanh', type: 'solid', quantity: 1, unit: 'piece' },
-      { id: 'muoi', name: 'Muối', type: 'powder', quantity: 2, unit: 'g' },
-    ],
-    basePrice: 13000,
-    preparationTime: 9,
-  },
-];
+export const RECIPE_CATALOG: RecipeDefinition[] = Recipes.map(function toDef(r) {
+  const ingredients: Ingredient[] = r.requiredIngredients.map(function toIng(id) {
+    return {
+      id,
+      name: getIngredientName(id),
+      type: 'solid',
+      quantity: 1,
+      unit: 'piece',
+    };
+  });
+  const basePrice =
+    r.id === 'banh_mi_thit' ? 15000 : r.id === 'che' ? 12000 : r.id === 'xien_que' ? 10000 : r.id === 'soda_da_chanh' ? 8000 : r.id === 'sua_dau_nanh' ? 7000 : 10000;
+  const preparationTime = r.id === 'banh_mi_thit' ? 18 : r.id === 'xien_que' ? 14 : r.id === 'che' ? 12 : 10;
+  return {
+    id: r.id,
+    name: getItemName(r.id),
+    ingredients,
+    basePrice,
+    preparationTime,
+  };
+});
+
+export function getIngredientIcon(id: string): any {
+  return getIngredientImage(id);
+}
 
 export function getRecipeById(id: string): RecipeDefinition | undefined {
-  return RECIPE_CATALOG.find(recipe => recipe.id === id);
+  return RECIPE_CATALOG.find(function byId(recipe) {
+    return recipe.id === id;
+  });
 }
 
 export function toOrderItem(recipe: RecipeDefinition | undefined): OrderItem {
