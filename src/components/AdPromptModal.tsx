@@ -1,5 +1,11 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TouchableWithoutFeedback } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+} from 'react-native';
 import { t } from '../i18n';
 
 export type AdPromptModalProps = {
@@ -10,7 +16,9 @@ export type AdPromptModalProps = {
   title?: string;
 };
 
-function AdPromptModal(props: AdPromptModalProps): React.ReactElement | null {
+function AdPromptModal(
+  props: Readonly<AdPromptModalProps>,
+): React.ReactElement | null {
   const { visible, loading, onClose, onWatchAd, title } = props;
   if (!visible) return null;
 
@@ -26,10 +34,20 @@ function AdPromptModal(props: AdPromptModalProps): React.ReactElement | null {
               </View>
             ) : (
               <View style={styles.actions}>
-                <TouchableOpacity style={styles.primaryBtn} onPress={onWatchAd} accessibilityLabel="watch-ad">
-                  <Text style={styles.primaryText}>Xem quảng cáo để nhận gợi ý</Text>
+                <TouchableOpacity
+                  style={styles.primaryBtn}
+                  onPress={onWatchAd}
+                  accessibilityLabel="watch-ad"
+                >
+                  <Text style={styles.primaryText}>
+                    Xem quảng cáo để nhận gợi ý
+                  </Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.secondaryBtn} onPress={onClose} accessibilityLabel={t('close')}>
+                <TouchableOpacity
+                  style={styles.secondaryBtn}
+                  onPress={onClose}
+                  accessibilityLabel={t('close')}
+                >
                   <Text style={styles.secondaryText}>{t('close')}</Text>
                 </TouchableOpacity>
               </View>
@@ -62,13 +80,33 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
   },
-  title: { color: '#3B2F2F', fontWeight: '700', fontSize: 18, marginBottom: 10 },
-  centerRow: { alignItems: 'center', justifyContent: 'center', paddingVertical: 10 },
+  title: {
+    color: '#3B2F2F',
+    fontWeight: '700',
+    fontSize: 18,
+    marginBottom: 10,
+  },
+  centerRow: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+  },
   loadingText: { color: '#6B5B5B' },
   actions: { marginTop: 6 },
-  primaryBtn: { backgroundColor: '#8B4513', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 12, marginBottom: 8 },
+  primaryBtn: {
+    backgroundColor: '#8B4513',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginBottom: 8,
+  },
   primaryText: { color: '#FFF8E1', fontWeight: '600' },
-  secondaryBtn: { backgroundColor: '#E6D5B8', borderRadius: 12, paddingVertical: 8, paddingHorizontal: 12 },
+  secondaryBtn: {
+    backgroundColor: '#E6D5B8',
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
   secondaryText: { color: '#3B2F2F', fontWeight: '600' },
 });
 

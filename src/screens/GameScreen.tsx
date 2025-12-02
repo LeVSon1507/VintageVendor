@@ -18,20 +18,19 @@ import { validateServe } from '../game/serve';
 import { INGREDIENT_CATALOG } from '../game/ingredients';
 import { getIngredientImage, getStallImage } from '../game/assets';
 import { getIngredientName } from '../i18n/names';
-import { compileSelectedDish } from '../game/combine';
 import CustomerWalker from '../components/CustomerWalker';
 import PauseBanner from '../components/PauseBanner';
 import RecipeModal from '../components/RecipeModal';
-import AdPromptModal from '../components/AdPromptModal';
+import { AdConfirmationModal } from '../components/AdConfirmationModal';
 import { getRecipeById } from '../game/recipes';
-import Ads from '../services/AdsManager';
+import { useGameAds } from '../hooks/useGameAds';
 import {
   startAmbient,
   stopAmbient,
   playVendorArrive,
-  playServeSuccess,
-  playServeFail,
-  playClick,
+  // playServeSuccess,
+  // playServeFail,
+  // playClick,
 } from '../audio/soundManager';
 import { INGREDIENT_CATEGORIES } from '../game/categories';
 import { t } from '../i18n';
@@ -47,6 +46,7 @@ function GameScreen(): React.ReactElement {
   const spawnCustomerWithOrder = useGameStore(
     state => state.spawnCustomerWithOrder,
   );
+
   const serveCurrentCustomerCorrect = useGameStore(
     state => state.serveCurrentCustomerCorrect,
   );
@@ -56,6 +56,7 @@ function GameScreen(): React.ReactElement {
   const updateCustomer = useGameStore(state => state.updateCustomer);
   const settings = useGameStore(state => state.settings);
   const coins = useGameStore(state => state.coins);
+  const addCoins = useGameStore(state => state.addCoins);
   const level = useGameStore(state => state.level);
   const exp = useGameStore(state => state.exp);
   const energy = useGameStore(state => state.energy);
@@ -63,42 +64,49 @@ function GameScreen(): React.ReactElement {
   const resetGame = useGameStore(state => state.resetGame);
 
   const intervalRef = useRef<number | null>(null);
+  const stallAnim = useRef(new Animated.Value(0)).current;
 
   // timer effect will be defined after acceptedOrder
+  // useEffect(
+  //   function setupAmbient() {
+  //     startAmbient(settings.musicVolume);
+  //     return function cleanupAmbient() {
+  //       stopAmbient();
+  //     };
+  //   },
+  //   [settings.musicVolume],
+  // );
+
   useEffect(
-    function setupAmbient() {
-      startAmbient(settings.musicVolume);
-      return function cleanupAmbient() {
-        stopAmbient();
-      };
+    function animateStall() {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(stallAnim, {
+            toValue: 1,
+            duration: 1500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(stallAnim, {
+            toValue: 0,
+            duration: 1500,
+            useNativeDriver: true,
+          }),
+        ]),
+      ).start();
+      return function cleanup() {};
     },
-    [settings.musicVolume],
+    [stallAnim],
   );
 
-  useEffect(function animateStall() {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(stallAnim, {
-          toValue: 1,
-          duration: 1500,
-          useNativeDriver: true,
-        }),
-        Animated.timing(stallAnim, {
-          toValue: 0,
-          duration: 1500,
-          useNativeDriver: true,
-        }),
-      ]),
-    ).start();
-    return function cleanup() {};
-  }, []);
-
-  useEffect(function autoSpawnOnMount() {
-    if (customers.length === 0) {
-      const spawn = useGameStore.getState().spawnCustomerWithOrder;
-      spawn();
-    }
-  }, []);
+  useEffect(
+    function autoSpawnOnMount() {
+      if (customers.length === 0) {
+        const spawn = useGameStore.getState().spawnCustomerWithOrder;
+        spawn();
+      }
+    },
+    [customers.length],
+  );
 
   useEffect(function autoSpawnLoop() {
     const interval = setInterval(function tick() {
@@ -143,22 +151,37 @@ function GameScreen(): React.ReactElement {
   const [coinText, setCoinText] = useState<string>('');
   const coinAnim = useRef(new Animated.Value(0)).current;
   const consumeEnergy = useGameStore(state => state.consumeEnergy);
+  const restoreEnergy = useGameStore(state => state.restoreEnergy);
   const [acceptedOrder, setAcceptedOrder] = useState<boolean>(false);
   const [actionDisabled, setActionDisabled] = useState<boolean>(false);
   const [activeCategory, setActiveCategory] = useState<string>('base');
-  const stallAnim = useRef(new Animated.Value(0)).current;
   const isPaused = useGameStore(state => state.isPaused);
   const resumeGame = useGameStore(state => state.resumeGame);
-  const getRecipeHint = useGameStore(state => state.getRecipeHint);
-  const dailyFreeHints = useGameStore(state => state.dailyFreeHints);
   const [hintIds, setHintIds] = useState<string[]>([]);
   const [npcHint, setNpcHint] = useState<string>('');
   const [showRecipeModal, setShowRecipeModal] = useState<boolean>(false);
   const [hintCount, setHintCount] = useState<number>(3);
   const [categoryHintKey, setCategoryHintKey] = useState<string | null>(null);
-  const [showAdModal, setShowAdModal] = useState<boolean>(false);
-  const [adLoading, setAdLoading] = useState<boolean>(false);
-  const [pausedByAd, setPausedByAd] = useState<boolean>(false);
+  const [confirmVisible, setConfirmVisible] = useState<boolean>(false);
+  const [confirmType, setConfirmType] = useState<
+    'HINT' | 'ENERGY' | 'MONEY' | null
+  >(null);
+  const [confirmTitle, setConfirmTitle] = useState<string>('');
+  const [confirmMessage, setConfirmMessage] = useState<string>('');
+
+  const { showAd, isLoaded, preload, statusText } = useGameAds(
+    function onReward(type) {
+      if (type === 'HINT') {
+        setHintCount(function inc(prev) {
+          return prev + 3;
+        });
+      } else if (type === 'ENERGY') {
+        restoreEnergy(5);
+      } else if (type === 'MONEY') {
+        addCoins(100);
+      }
+    },
+  );
 
   useEffect(
     function startTimer() {
@@ -187,7 +210,7 @@ function GameScreen(): React.ReactElement {
   const onArriveCustomer = useCallback(
     function onArriveCustomer(customerId: string): void {
       updateCustomer(customerId, { position: { x: 0, y: 0 }, mood: 'neutral' });
-      playVendorArrive(settings.soundVolume);
+      // playVendorArrive(settings.soundVolume);
       setActionDisabled(false);
       setHintIds([]);
       setNpcHint('');
@@ -202,7 +225,7 @@ function GameScreen(): React.ReactElement {
         ? prev.filter(id => id !== ingredientId)
         : [...prev, ingredientId];
     });
-    playClick(settings.soundVolume);
+    // playClick(settings.soundVolume);
   }
 
   function handleServe(): void {
@@ -219,7 +242,7 @@ function GameScreen(): React.ReactElement {
       setActionDisabled(true);
       serveCurrentCustomerCorrect();
       consumeEnergy(1);
-      playServeSuccess(settings.soundVolume);
+      // playServeSuccess(settings.soundVolume);
       setReaction('success');
       setTimeout(function clearReaction() {
         setReaction(null);
@@ -237,127 +260,98 @@ function GameScreen(): React.ReactElement {
         spawnCustomerWithOrder();
       });
     } else {
-      const compiled = compileSelectedDish(selectedIngredientIds);
-      if (compiled) {
-        serveCurrentCustomerWrong(result.missing.length);
-        consumeEnergy(1);
-        playServeFail(settings.soundVolume);
-        setReaction('fail');
-        setTimeout(function clearReaction() {
-          setReaction(null);
-        }, 800);
-        const penalty = Math.max(0, Math.round(currentOrderItem.price * 0.1));
-        setCoinText(`-${penalty.toLocaleString('vi-VN')}₫`);
-        coinAnim.setValue(0);
-        Animated.timing(coinAnim, {
-          toValue: 1,
-          duration: 1200,
-          useNativeDriver: true,
-        }).start(function end() {
-          setCoinText('');
-        });
-      } else {
-        serveCurrentCustomerWrong(result.missing.length);
-        consumeEnergy(1);
-        playServeFail(settings.soundVolume);
-        setReaction('fail');
-        setTimeout(function clearReaction() {
-          setReaction(null);
-        }, 800);
-        const penalty = Math.max(0, Math.round(currentOrderItem.price * 0.1));
-        setCoinText(`-${penalty.toLocaleString('vi-VN')}₫`);
-        coinAnim.setValue(0);
-        Animated.timing(coinAnim, {
-          toValue: 1,
-          duration: 1200,
-          useNativeDriver: true,
-        }).start(function end() {
-          setCoinText('');
-        });
-      }
+      applyServeFailure(currentOrderItem.price, result.missing.length);
     }
     setSelectedIngredientIds([]);
+  }
+
+  function applyServeFailure(
+    penaltyBasePrice: number,
+    missingCount: number,
+  ): void {
+    serveCurrentCustomerWrong(missingCount);
+    consumeEnergy(1);
+    // playServeFail(settings.soundVolume);
+    setReaction('fail');
+    setTimeout(function clearReaction() {
+      setReaction(null);
+    }, 800);
+    const penalty = Math.max(0, Math.round(penaltyBasePrice * 0.1));
+    setCoinText(`-${penalty.toLocaleString('vi-VN')}₫`);
+    coinAnim.setValue(0);
+    Animated.timing(coinAnim, {
+      toValue: 1,
+      duration: 1200,
+      useNativeDriver: true,
+    }).start(function end() {
+      setCoinText('');
+    });
   }
 
   function handleResetSelection(): void {
     if (actionDisabled) return;
     setSelectedIngredientIds([]);
-    playClick(settings.soundVolume);
+    // playClick(settings.soundVolume);
   }
 
-  function findNextMissingIngredient(): {
-    id: string | null;
-    category: string | null;
-  } {
-    if (!acceptedOrder || customers.length === 0)
-      return { id: null, category: null };
-    const reqIds = customers[0].order.items[0].ingredients.map(function toId(
-      i,
-    ) {
-      return i.id;
-    });
-    const missingId =
-      reqIds.find(function firstMissing(id) {
-        return !selectedIngredientIds.includes(id);
-      }) ?? null;
-    if (!missingId) return { id: null, category: null };
-    const categories = Object.keys(INGREDIENT_CATEGORIES);
-    const cat =
-      categories.find(function has(idCat) {
-        const list =
-          INGREDIENT_CATEGORIES[idCat as keyof typeof INGREDIENT_CATEGORIES];
-        return list.includes(missingId);
-      }) ?? null;
-    return { id: missingId, category: cat };
-  }
-
-  async function showAdPrompt(kind: 'HINT'): Promise<void> {
-    setAdLoading(true);
-    const ok = await Ads.showRewarded(function onReward() {
-      setHintCount(function inc(prev) {
-        return prev + 3;
-      });
-    }, 'HINT');
-    setAdLoading(false);
-    setShowAdModal(false);
-    if (!ok) {
-      // no-op if failed; hints unchanged
+  function openConfirm(kind: 'HINT' | 'ENERGY' | 'MONEY'): void {
+    setConfirmType(kind);
+    if (kind === 'HINT') {
+      setConfirmTitle('Thêm gợi ý');
+      setConfirmMessage('Xem video để nhận thêm gợi ý');
+    } else if (kind === 'ENERGY') {
+      setConfirmTitle('Hồi năng lượng');
+      setConfirmMessage('Xem video để nhận 5 năng lượng');
+    } else {
+      setConfirmTitle('Nhận tiền');
+      setConfirmMessage('Xem video để nhận tiền thưởng');
     }
+    setConfirmVisible(true);
+    preload();
   }
 
   useEffect(
-    function pauseOnAdModal() {
+    function syncEnergyAuto() {
       const store = useGameStore.getState();
-      if (showAdModal && !store.isPaused) {
-        store.pauseGame();
-        setPausedByAd(true);
-      } else if (!showAdModal && pausedByAd) {
-        store.resumeGame();
-        setPausedByAd(false);
+      if (store.energy === 0) {
+        // no-op here; UI will allow ad flow
       }
     },
-    [showAdModal, pausedByAd],
+    [energy],
   );
 
-  async function handleHint(): Promise<void> {
-    if (actionDisabled || customers.length === 0) return;
-    if (hintCount <= 0) {
-      setShowAdModal(true);
+  function handleHint(): void {
+    if (actionDisabled) return;
+    if (hintCount > 0) {
+      const missingRequired = requiredIds.filter(function need(id) {
+        return !selectedIngredientIds.includes(id) && !hintIds.includes(id);
+      });
+      if (missingRequired.length > 0) {
+        const nextId = missingRequired[0];
+        setHintIds(function add(prev) {
+          return [...prev, nextId];
+        });
+        setHintCount(function dec(prev) {
+          return Math.max(0, prev - 1);
+        });
+        setCategoryHintKey(null);
+      } else if (requiredIds.length > 0) {
+        const candidate =
+          requiredIds.find(function notHinted(id) {
+            return !hintIds.includes(id);
+          }) || requiredIds[0];
+        const entry = Object.entries(INGREDIENT_CATEGORIES).find(
+          function findCat(pair) {
+            const list = pair[1] as string[];
+            return list.includes(candidate);
+          },
+        );
+        const cat = entry ? (entry[0] as string) : null;
+        setCategoryHintKey(cat);
+      }
       return;
     }
-    const next = findNextMissingIngredient();
-    setHintIds([]);
-    setCategoryHintKey(null);
-    if (next.id && next.category) {
-      if (next.category === activeCategory) {
-        setHintIds([next.id]);
-      } else {
-        setCategoryHintKey(next.category);
-      }
-      setHintCount(function dec(prev) {
-        return Math.max(0, prev - 1);
-      });
-    }
+    openConfirm('HINT');
   }
 
   const totalTime =
@@ -391,9 +385,9 @@ function GameScreen(): React.ReactElement {
           'Không đá': 'Không cho đá nhé!',
           'Ít đường': 'Ít đường thôi!',
           'Không cay': 'Không cay dùm nhé!',
-          Cay: 'Cho cay cay giùm!',
-          Nóng: 'Làm nóng giùm!',
-          Lạnh: 'Làm lạnh giùm!',
+          Cay: 'Cho cay cay nhé!',
+          Nóng: 'Làm nóng nhé!',
+          Lạnh: 'Làm lạnh nhé!',
         };
         const allowed = reqs.filter(function ok(r) {
           if (!rec) return typeof map[r] === 'string';
@@ -433,7 +427,21 @@ function GameScreen(): React.ReactElement {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.topBar}>
-        <Text style={styles.topText}>💰 {coins}</Text>
+        <View style={styles.coinsWrap}>
+          <Text style={styles.topText}>💰 {coins}</Text>
+          <TouchableOpacity
+            style={styles.plusButton}
+            onPress={function openMoney() {
+              openConfirm('MONEY');
+            }}
+          >
+            <Image
+              source={require('../assets/images/icon/plus.png')}
+              style={styles.iconSmallPlus}
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
+        </View>
         <View style={styles.levelWrap}>
           <Text style={styles.levelText}>Lv {level}</Text>
           <View style={styles.levelBarContainer}>
@@ -443,14 +451,30 @@ function GameScreen(): React.ReactElement {
           </View>
         </View>
         <View style={styles.topRight}>
-          <Text style={styles.topText}>
-            ⚡ {energy}/{maxEnergy}
-          </Text>
+          {energy === 0 ? (
+            <TouchableOpacity
+              onPress={function openEnergy() {
+                openConfirm('ENERGY');
+              }}
+            >
+              <Text style={styles.topText}>
+                ⚡ {energy}/{maxEnergy}
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <Text style={styles.topText}>
+              ⚡ {energy}/{maxEnergy}
+            </Text>
+          )}
           <TouchableOpacity
             style={styles.pauseIconButton}
             onPress={handlePause}
           >
-            <Text style={styles.pauseIconText}>⏸️</Text>
+            <Image
+              source={require('../assets/images/icon/pause.png')}
+              style={styles.iconSmall}
+              resizeMode="contain"
+            />
           </TouchableOpacity>
         </View>
       </View>
@@ -665,10 +689,22 @@ function GameScreen(): React.ReactElement {
                     style={[styles.hintButton, styles.fullButton]}
                     onPress={handleHint}
                   >
-                    <Text style={styles.secondaryButtonText}>
-                      {hintCount === 0 || showAdModal ? '▶️ ' : '💡 '}
-                      {t('hint')} (x{hintCount})
-                    </Text>
+                    {hintCount > 0 ? (
+                      <Text style={styles.secondaryButtonText}>{`💡 ${t(
+                        'hint',
+                      )} (${hintCount})`}</Text>
+                    ) : (
+                      <View style={styles.inlineGroup}>
+                        <Image
+                          source={require('../assets/images/icon/tivi.png')}
+                          style={styles.iconSmall}
+                          resizeMode="contain"
+                        />
+                        <Text style={styles.secondaryButtonText}>
+                          Xem video
+                        </Text>
+                      </View>
+                    )}
                   </TouchableOpacity>
                 </View>
               </View>
@@ -692,22 +728,28 @@ function GameScreen(): React.ReactElement {
           />
         </View>
       ) : null}
-      {showAdModal ? (
+      {confirmVisible ? (
         <View style={styles.globalOverlay} pointerEvents="auto">
           <View style={styles.globalDim} />
-          <AdPromptModal
-            visible={showAdModal}
-            loading={adLoading}
-            onClose={() => setShowAdModal(false)}
-            onWatchAd={() => {
-              // run rewarded ad flow
-              void showAdPrompt('HINT');
+          <AdConfirmationModal
+            visible={confirmVisible}
+            onClose={function close() {
+              setConfirmVisible(false);
+              setConfirmType(null);
             }}
-            title={'Gợi ý'}
+            onConfirm={function confirm() {
+              if (confirmType) showAd(confirmType);
+              setConfirmVisible(false);
+              setConfirmType(null);
+            }}
+            title={confirmTitle}
+            message={confirmMessage}
+            disabled={!isLoaded}
+            loadingText={statusText}
           />
         </View>
       ) : null}
-      {isPaused && !showAdModal ? (
+      {isPaused && !confirmVisible ? (
         <View style={styles.globalOverlay} pointerEvents="auto">
           <View style={styles.globalDim} />
           <PauseBanner
@@ -780,6 +822,14 @@ const styles = StyleSheet.create({
   stallImage: { width: '92%', height: 140, marginBottom: 8, marginTop: 16 },
   hint: { color: '#6B5B5B', textAlign: 'center', marginBottom: 16 },
   topRight: { flexDirection: 'row', alignItems: 'center' },
+  coinsWrap: { flexDirection: 'row', alignItems: 'center' },
+  plusButton: {
+    marginLeft: 6,
+    backgroundColor: '#E6D5B8',
+    paddingHorizontal: 2,
+    paddingVertical: 2,
+  },
+  plusText: { color: '#3B2F2F', fontWeight: '700' },
   sampleButton: {
     backgroundColor: '#8B4513',
     paddingVertical: 12,
@@ -815,6 +865,8 @@ const styles = StyleSheet.create({
   },
   pauseIconText: { color: '#3B2F2F', fontWeight: '600' },
   inlineGroup: { flexDirection: 'row', alignItems: 'center' },
+  iconSmall: { width: 16, height: 16, marginRight: 6, alignItems: 'center' },
+  iconSmallPlus: { width: 24, height: 24, cursor: 'pointer' },
   iconButton: {
     backgroundColor: '#E6D5B8',
     paddingVertical: 8,

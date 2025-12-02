@@ -9,7 +9,7 @@ export function createRng(seed?: number): RNG {
   function nextFloat(): number {
     // Simple LCG for determinism if seed provided
     s = (s * 1664525 + 1013904223) % 4294967296;
-    return (s & 0xffffffff) / 4294967296;
+    return s / 4294967296;
   }
 
   function nextInt(min: number, max: number): number {

@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, TouchableWithoutFeedback } from 'react-native';
 import { Recipes } from '../game/recipes';
 import { getIngredientImage } from '../game/assets';
-import { getIngredientName, getItemName } from '../i18n/names';
+import { getItemName } from '../i18n/names';
 import { t } from '../i18n';
 
 export type RecipeModalProps = {

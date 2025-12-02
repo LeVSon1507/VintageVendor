@@ -1,6 +1,10 @@
 {
   "name": "VintageVendor",
   "displayName": "VintageVendor",
+  "react-native-google-mobile-ads": {
+    "android_app_id": "ca-app-pub-8120607268374699~9558145020",
+    "ios_app_id": "ca-app-pub-8120607268374699~9558145020"
+  },
   "extra": {
     "eas": {
       "projectId": "13dfb276-c925-434b-a877-df3e0f347437"

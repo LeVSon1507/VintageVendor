@@ -115,7 +115,7 @@ function CustomerWalker(props: CustomerWalkerProps): React.ReactElement {
         }
       };
     },
-    [translateX, customer.id, walkFrames],
+    [translateX, customer.id, walkFrames, bubbleScale, bubbleOpacity, onArrive],
   );
 
   return (

@@ -1,50 +1,58 @@
-let Sound: any = null;
-try {
-  Sound = require('react-native-sound');
-  if (Sound && Sound.setCategory) {
-    Sound.setCategory('Ambient', true);
-  }
-} catch {
-  Sound = null;
-}
+import Sound from 'react-native-sound';
+import { log } from '../services/Logger';
+
+Sound.setCategory('Ambient', true);
 
 const AUDIO = {
-  ambient_mix: [require('../assets/audio/ambient_mix.mp3')],
-  rao_hang_rong: [require('../assets/audio/tieng_rao_ban_hang_rong.ogg')],
-  rao_ve_so: [require('../assets/audio/tieng_rao_ban_ve_so_dao_cuc_vui.ogg')],
-  rao_banh_bao: [require('../assets/audio/tieng_rao_banh_bao.ogg')],
+  ambient_mix: require('../assets/audio/ambient_mix.mp3'),
 } as const;
+console.log('AUDIO MIX:', AUDIO.ambient_mix);
 
-let ambientTimer: number | null = null;
+let ambientTimer: ReturnType<typeof setInterval> | null = null;
+let currentAmbient: Sound | null = null;
 
-function playClip(fileOrList: any | any[], volume: number): void {
-  if (!Sound) return;
-  const sources = Array.isArray(fileOrList) ? fileOrList : [fileOrList];
-  function tryPlay(index: number): void {
-    const src = sources[index];
-    if (!src) return;
-    const clip = new Sound(src, (error: any) => {
-      if (error) {
-        tryPlay(index + 1);
-        return;
-      }
-      clip.setVolume(Math.max(0, Math.min(1, volume)));
-      clip.play(() => {
-        clip.release();
-      });
-    });
+function playClip(asset: number, volume: number, loop: boolean = false) {
+  console.log('PLAY ASSET:', asset);
+
+  if (!asset) {
+    console.log('ERROR: asset undefined');
+    return;
   }
-  tryPlay(0);
+
+  const s = new Sound(asset, err => {
+    if (err) {
+      console.log('LOAD ERROR:', err);
+      return;
+    }
+
+    s.setVolume(volume);
+
+    if (loop) s.setNumberOfLoops(-1);
+
+    s.play(ok => {
+      if (!loop) s.release();
+    });
+  });
 }
 
+const AMBIENT_INTERVAL_MS = 71000;
+
 export function startAmbient(volume: number): void {
-  if (!Sound) return;
   if (ambientTimer) return;
-  function playAmbient(): void {
-    playClip(AUDIO.ambient_mix, Math.max(0, Math.min(1, volume * 0.6)));
-  }
-  playAmbient();
-  ambientTimer = setInterval(playAmbient, 71000) as unknown as number;
+
+  const playAmbientLoop = () => {
+    if (currentAmbient) {
+      currentAmbient.stop();
+      currentAmbient.release();
+      currentAmbient = null;
+    }
+
+    playClip(AUDIO.ambient_mix, Math.max(0, Math.min(1, volume * 0.5)), false);
+  };
+
+  playAmbientLoop();
+
+  ambientTimer = setInterval(playAmbientLoop, AMBIENT_INTERVAL_MS);
 }
 
 export function stopAmbient(): void {
@@ -52,20 +60,25 @@ export function stopAmbient(): void {
     clearInterval(ambientTimer);
     ambientTimer = null;
   }
+  if (currentAmbient) {
+    currentAmbient.stop();
+    currentAmbient.release();
+    currentAmbient = null;
+  }
 }
 
 export function playVendorArrive(volume: number): void {
-  playClip(AUDIO.rao_hang_rong, volume);
+  playClip(AUDIO.ambient_mix, volume);
 }
 
 export function playServeSuccess(volume: number): void {
-  playClip(AUDIO.rao_banh_bao, volume);
+  playClip(AUDIO.ambient_mix, volume);
 }
 
 export function playServeFail(volume: number): void {
-  playClip(AUDIO.rao_ve_so, volume);
+  playClip(AUDIO.ambient_mix, volume);
 }
 
 export function playClick(volume: number): void {
-  playClip(AUDIO.rao_banh_bao, Math.max(0, Math.min(1, volume * 0.4)));
+  playClip(AUDIO.ambient_mix, Math.max(0, Math.min(1, volume * 0.4)));
 }
