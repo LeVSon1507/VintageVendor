@@ -17,7 +17,7 @@ function App(): React.ReactElement {
     // Khởi tạo Google Mobile Ads SDK
     mobileAds()
       .initialize()
-      .then(adapterStatuses => {
+      .then(_adapterStatuses => {
         console.log('[App] AdMob SDK Initialized');
         // Sau khi SDK sẵn sàng, setup AdsManager
         Ads.setup();

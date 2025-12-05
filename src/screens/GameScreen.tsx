@@ -28,12 +28,27 @@ import {
   startAmbient,
   stopAmbient,
   playVendorArrive,
-  // playServeSuccess,
-  // playServeFail,
-  // playClick,
+  playServeSuccess,
+  playServeFail,
+  playClick,
 } from '../audio/soundManager';
 import { INGREDIENT_CATEGORIES } from '../game/categories';
 import { t } from '../i18n';
+import {
+  buildProvidedIngredients,
+  animateCoinChange,
+  computePenalty,
+  getConfirmContent,
+  getCategoryLabel,
+  getNpcHintMessage,
+  getMissingRequiredIds,
+  getCandidateRequiredId,
+  getCategoryKeyForIngredient,
+  getTotalTime,
+  computeTimeRatio,
+  getTimerFillColor,
+  getRequiredIngredientIds,
+} from './helpers/GameScreen.utils';
 
 type GameScreenNavigation = StackNavigationProp<RootStackParamList, 'Game'>;
 
@@ -66,16 +81,15 @@ function GameScreen(): React.ReactElement {
   const intervalRef = useRef<number | null>(null);
   const stallAnim = useRef(new Animated.Value(0)).current;
 
-  // timer effect will be defined after acceptedOrder
-  // useEffect(
-  //   function setupAmbient() {
-  //     startAmbient(settings.musicVolume);
-  //     return function cleanupAmbient() {
-  //       stopAmbient();
-  //     };
-  //   },
-  //   [settings.musicVolume],
-  // );
+  useEffect(
+    function setupAmbient() {
+      startAmbient(settings.musicVolume);
+      return function cleanupAmbient() {
+        stopAmbient();
+      };
+    },
+    [settings.musicVolume],
+  );
 
   useEffect(
     function animateStall() {
@@ -172,16 +186,105 @@ function GameScreen(): React.ReactElement {
   const { showAd, isLoaded, preload, statusText } = useGameAds(
     function onReward(type) {
       if (type === 'HINT') {
-        setHintCount(function inc(prev) {
+        setHintCount(function increaseHint(prev) {
           return prev + 3;
         });
-      } else if (type === 'ENERGY') {
+        return;
+      }
+      if (type === 'ENERGY') {
         restoreEnergy(5);
-      } else if (type === 'MONEY') {
+        return;
+      }
+      if (type === 'MONEY') {
         addCoins(100);
+        return;
       }
     },
   );
+
+  function applyServeSuccess(currentOrderItem: any): void {
+    setActionDisabled(true);
+    serveCurrentCustomerCorrect();
+    consumeEnergy(1);
+    playServeSuccess(settings.soundVolume);
+    setReaction('success');
+    setTimeout(function clearReaction() {
+      setReaction(null);
+    }, 800);
+    setCoinText(`+${currentOrderItem.price.toLocaleString('vi-VN')}₫`);
+    animateCoinChange(coinAnim, function finalize() {
+      setCoinText('');
+      useGameStore.getState().finalizeServeCurrentCustomer();
+      setAcceptedOrder(false);
+      spawnCustomerWithOrder();
+    });
+  }
+
+  function handleAcceptOrder(): void {
+    if (actionDisabled) return;
+    setAcceptedOrder(true);
+    useGameStore.getState().resetRoundTimer();
+  }
+
+  function handleSelectCategory(key: string): void {
+    if (actionDisabled) return;
+    setActiveCategory(key);
+    setCategoryHintKey(null);
+  }
+
+  function onPressCategory(key: string): () => void {
+    return function press() {
+      handleSelectCategory(key);
+    };
+  }
+
+  function onPressIngredient(id: string): () => void {
+    return function press() {
+      toggleIngredient(id);
+    };
+  }
+
+  function renderCategory(key: string): React.ReactElement {
+    const isActive = activeCategory === key;
+    return (
+      <TouchableOpacity
+        key={key}
+        style={[
+          isActive ? styles.categoryChipActive : styles.categoryChip,
+          categoryHintKey === key ? styles.categoryHint : null,
+        ]}
+        onPress={onPressCategory(key)}
+      >
+        <Text style={styles.categoryText}>{getCategoryLabel(key)}</Text>
+      </TouchableOpacity>
+    );
+  }
+
+  function renderIngredientChip(ingredient: any): React.ReactElement {
+    const isSelected = selectedIngredientIds.includes(ingredient.id);
+    const isRequired = requiredIds.includes(ingredient.id);
+    const isHinted = hintIds.includes(ingredient.id);
+    return (
+      <TouchableOpacity
+        key={ingredient.id}
+        style={[
+          isSelected ? styles.chipSelected : styles.chip,
+          showHint && isRequired ? styles.chipHint : null,
+          isHinted ? styles.chipHint : null,
+          isSelected ? styles.chipScaleSelected : null,
+        ]}
+        onPress={onPressIngredient(ingredient.id)}
+      >
+        <Image
+          source={getIngredientImage(ingredient.id)}
+          style={styles.chipImage}
+        />
+        <Text style={isSelected ? styles.chipTextSelected : styles.chipText}>
+          {getIngredientName(ingredient.id)}
+        </Text>
+      </TouchableOpacity>
+    );
+  }
 
   useEffect(
     function startTimer() {
@@ -210,7 +313,7 @@ function GameScreen(): React.ReactElement {
   const onArriveCustomer = useCallback(
     function onArriveCustomer(customerId: string): void {
       updateCustomer(customerId, { position: { x: 0, y: 0 }, mood: 'neutral' });
-      // playVendorArrive(settings.soundVolume);
+      playVendorArrive(settings.soundVolume);
       setActionDisabled(false);
       setHintIds([]);
       setNpcHint('');
@@ -225,7 +328,7 @@ function GameScreen(): React.ReactElement {
         ? prev.filter(id => id !== ingredientId)
         : [...prev, ingredientId];
     });
-    // playClick(settings.soundVolume);
+    playClick(settings.soundVolume);
   }
 
   function handleServe(): void {
@@ -233,32 +336,13 @@ function GameScreen(): React.ReactElement {
     if (isPaused) return;
     if (customers.length === 0) return;
     const currentOrderItem = customers[0].order.items[0];
-    const providedIngredients: Ingredient[] =
-      currentOrderItem.ingredients.filter(function isSelected(ingredient) {
-        return selectedIngredientIds.includes(ingredient.id);
-      });
+    const providedIngredients: Ingredient[] = buildProvidedIngredients(
+      currentOrderItem,
+      selectedIngredientIds,
+    );
     const result = validateServe(currentOrderItem, providedIngredients);
     if (result.ok) {
-      setActionDisabled(true);
-      serveCurrentCustomerCorrect();
-      consumeEnergy(1);
-      // playServeSuccess(settings.soundVolume);
-      setReaction('success');
-      setTimeout(function clearReaction() {
-        setReaction(null);
-      }, 800);
-      setCoinText(`+${currentOrderItem.price.toLocaleString('vi-VN')}₫`);
-      coinAnim.setValue(0);
-      Animated.timing(coinAnim, {
-        toValue: 1,
-        duration: 1200,
-        useNativeDriver: true,
-      }).start(function end() {
-        setCoinText('');
-        useGameStore.getState().finalizeServeCurrentCustomer();
-        setAcceptedOrder(false);
-        spawnCustomerWithOrder();
-      });
+      applyServeSuccess(currentOrderItem);
     } else {
       applyServeFailure(currentOrderItem.price, result.missing.length);
     }
@@ -271,19 +355,14 @@ function GameScreen(): React.ReactElement {
   ): void {
     serveCurrentCustomerWrong(missingCount);
     consumeEnergy(1);
-    // playServeFail(settings.soundVolume);
+    playServeFail(settings.soundVolume);
     setReaction('fail');
     setTimeout(function clearReaction() {
       setReaction(null);
     }, 800);
-    const penalty = Math.max(0, Math.round(penaltyBasePrice * 0.1));
+    const penalty = computePenalty(penaltyBasePrice);
     setCoinText(`-${penalty.toLocaleString('vi-VN')}₫`);
-    coinAnim.setValue(0);
-    Animated.timing(coinAnim, {
-      toValue: 1,
-      duration: 1200,
-      useNativeDriver: true,
-    }).start(function end() {
+    animateCoinChange(coinAnim, function end() {
       setCoinText('');
     });
   }
@@ -291,23 +370,48 @@ function GameScreen(): React.ReactElement {
   function handleResetSelection(): void {
     if (actionDisabled) return;
     setSelectedIngredientIds([]);
-    // playClick(settings.soundVolume);
+    playClick(settings.soundVolume);
   }
 
   function openConfirm(kind: 'HINT' | 'ENERGY' | 'MONEY'): void {
     setConfirmType(kind);
-    if (kind === 'HINT') {
-      setConfirmTitle('Thêm gợi ý');
-      setConfirmMessage('Xem video để nhận thêm gợi ý');
-    } else if (kind === 'ENERGY') {
-      setConfirmTitle('Hồi năng lượng');
-      setConfirmMessage('Xem video để nhận 5 năng lượng');
-    } else {
-      setConfirmTitle('Nhận tiền');
-      setConfirmMessage('Xem video để nhận tiền thưởng');
-    }
+    const content = getConfirmContent(kind);
+    setConfirmTitle(content.title);
+    setConfirmMessage(content.message);
     setConfirmVisible(true);
     preload();
+  }
+
+  function openMoney(): void {
+    openConfirm('MONEY');
+  }
+
+  function openEnergy(): void {
+    openConfirm('ENERGY');
+  }
+
+  function openRecipes(): void {
+    setShowRecipeModal(true);
+  }
+
+  function closeRecipes(): void {
+    setShowRecipeModal(false);
+  }
+
+  function closeConfirm(): void {
+    setConfirmVisible(false);
+    setConfirmType(null);
+  }
+
+  function confirmAd(): void {
+    if (confirmType) showAd(confirmType);
+    setConfirmVisible(false);
+    setConfirmType(null);
+  }
+
+  function goHome(): void {
+    resetGame();
+    navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
   }
 
   useEffect(
@@ -322,101 +426,54 @@ function GameScreen(): React.ReactElement {
 
   function handleHint(): void {
     if (actionDisabled) return;
-    if (hintCount > 0) {
-      const missingRequired = requiredIds.filter(function need(id) {
-        return !selectedIngredientIds.includes(id) && !hintIds.includes(id);
-      });
-      if (missingRequired.length > 0) {
-        const nextId = missingRequired[0];
-        setHintIds(function add(prev) {
-          return [...prev, nextId];
-        });
-        setHintCount(function dec(prev) {
-          return Math.max(0, prev - 1);
-        });
-        setCategoryHintKey(null);
-      } else if (requiredIds.length > 0) {
-        const candidate =
-          requiredIds.find(function notHinted(id) {
-            return !hintIds.includes(id);
-          }) || requiredIds[0];
-        const entry = Object.entries(INGREDIENT_CATEGORIES).find(
-          function findCat(pair) {
-            const list = pair[1] as string[];
-            return list.includes(candidate);
-          },
-        );
-        const cat = entry ? (entry[0] as string) : null;
-        setCategoryHintKey(cat);
-      }
+    if (hintCount <= 0) {
+      openConfirm('HINT');
       return;
     }
-    openConfirm('HINT');
+    const missingRequired = getMissingRequiredIds(
+      requiredIds,
+      selectedIngredientIds,
+      hintIds,
+    );
+    if (missingRequired.length > 0) {
+      const nextId = missingRequired[0];
+      setHintIds(function add(prev) {
+        return [...prev, nextId];
+      });
+      setHintCount(function decrease(prev) {
+        return Math.max(0, prev - 1);
+      });
+      setCategoryHintKey(null);
+      return;
+    }
+    if (requiredIds.length > 0) {
+      const candidate = getCandidateRequiredId(requiredIds, hintIds);
+      const categoryKey = candidate
+        ? getCategoryKeyForIngredient(candidate)
+        : null;
+      setCategoryHintKey(categoryKey);
+      return;
+    }
   }
 
-  const totalTime =
-    settings.difficulty === 'easy'
-      ? 90
-      : settings.difficulty === 'hard'
-      ? 45
-      : 60;
-  const timeRatio = Math.max(0, Math.min(1, timeRemaining / totalTime));
-  const fillColor =
-    timeRatio > 0.5 ? '#8B4513' : timeRatio > 0.2 ? '#D38B5D' : '#C75050';
+  const totalTime = getTotalTime(settings.difficulty);
+  const timeRatio = computeTimeRatio(timeRemaining, totalTime);
+  const fillColor = getTimerFillColor(timeRatio);
 
-  const requiredIds =
-    customers.length > 0
-      ? customers[0].order.items[0].ingredients.map(i => i.id)
-      : [];
+  const requiredIds = getRequiredIngredientIds(customers);
   const showHint = customersServed < 2;
 
   useEffect(
     function npcHintMaybe() {
       if (customers.length === 0 || acceptedOrder) return;
-      const reqs: string[] =
+      const requirements: string[] =
         (customers[0].order.items[0] as any).requirements || [];
       const itemId = customers[0].order.items[0].id;
-      const rec = getRecipeById(itemId);
-      const p = Math.random();
-      if (p < 0.06) {
-        const map: Record<string, string> = {
-          'Thêm đá': 'Nhớ cho đúng phần đá nghen!',
-          'Ít đá': 'Cho ít đá thôi nghen!',
-          'Không đá': 'Không cho đá nhé!',
-          'Ít đường': 'Ít đường thôi!',
-          'Không cay': 'Không cay dùm nhé!',
-          Cay: 'Cho cay cay nhé!',
-          Nóng: 'Làm nóng nhé!',
-          Lạnh: 'Làm lạnh nhé!',
-        };
-        const allowed = reqs.filter(function ok(r) {
-          if (!rec) return typeof map[r] === 'string';
-          if (rec.temperature === 'Hot') {
-            if (
-              r === 'Lạnh' ||
-              r === 'Thêm đá' ||
-              r === 'Ít đá' ||
-              r === 'Không đá'
-            )
-              return false;
-          }
-          if (rec.temperature === 'Cold') {
-            if (r === 'Nóng') return false;
-          }
-          return typeof map[r] === 'string';
-        });
-        let msg = '';
-        if (allowed.length > 0) {
-          msg = map[allowed[0]];
-        } else if (rec) {
-          msg =
-            rec.temperature === 'Hot'
-              ? 'Làm nóng giùm nhé!'
-              : 'Nhớ cho đúng phần đá nhé!';
-        } else {
-          msg = 'Nhớ pha cho đúng nhé!';
-        }
-        setNpcHint(msg);
+      const recipe = getRecipeById(itemId);
+      const probability = Math.random();
+      if (probability < 0.06) {
+        const msg = getNpcHintMessage(requirements, recipe);
+        setNpcHint(msg || '');
       } else {
         setNpcHint('');
       }
@@ -429,12 +486,7 @@ function GameScreen(): React.ReactElement {
       <View style={styles.topBar}>
         <View style={styles.coinsWrap}>
           <Text style={styles.topText}>💰 {coins}</Text>
-          <TouchableOpacity
-            style={styles.plusButton}
-            onPress={function openMoney() {
-              openConfirm('MONEY');
-            }}
-          >
+          <TouchableOpacity style={styles.plusButton} onPress={openMoney}>
             <Image
               source={require('../assets/images/icon/plus.png')}
               style={styles.iconSmallPlus}
@@ -452,11 +504,7 @@ function GameScreen(): React.ReactElement {
         </View>
         <View style={styles.topRight}>
           {energy === 0 ? (
-            <TouchableOpacity
-              onPress={function openEnergy() {
-                openConfirm('ENERGY');
-              }}
-            >
+            <TouchableOpacity onPress={openEnergy}>
               <Text style={styles.topText}>
                 ⚡ {energy}/{maxEnergy}
               </Text>
@@ -546,11 +594,7 @@ function GameScreen(): React.ReactElement {
                 bubbleItem={
                   acceptedOrder ? undefined : customers[0].order.items[0]
                 }
-                onAcceptOrder={() => {
-                  if (actionDisabled) return;
-                  setAcceptedOrder(true);
-                  useGameStore.getState().resetRoundTimer();
-                }}
+                onAcceptOrder={handleAcceptOrder}
                 reaction={reaction}
                 coinText={coinText}
                 coinAnim={coinAnim}
@@ -564,36 +608,7 @@ function GameScreen(): React.ReactElement {
             )}
             {acceptedOrder && (
               <View style={styles.categoryRow}>
-                {Object.keys(INGREDIENT_CATEGORIES).map(function renderCat(
-                  key,
-                ) {
-                  const isActive = activeCategory === key;
-                  const labelMap: Record<string, string> = {
-                    base: t('categoryBase'),
-                    protein: t('categoryProtein'),
-                    liquid: t('categoryLiquid'),
-                    topping: t('categoryTopping'),
-                    spices: t('categorySpices'),
-                  };
-                  return (
-                    <TouchableOpacity
-                      key={key}
-                      style={[
-                        isActive
-                          ? styles.categoryChipActive
-                          : styles.categoryChip,
-                        categoryHintKey === key ? styles.categoryHint : null,
-                      ]}
-                      onPress={() => {
-                        if (actionDisabled) return;
-                        setActiveCategory(key);
-                        setCategoryHintKey(null);
-                      }}
-                    >
-                      <Text style={styles.categoryText}>{labelMap[key]}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
+                {Object.keys(INGREDIENT_CATEGORIES).map(renderCategory)}
               </View>
             )}
             {acceptedOrder && (
@@ -608,37 +623,7 @@ function GameScreen(): React.ReactElement {
                       activeCategory as keyof typeof INGREDIENT_CATEGORIES
                     ];
                   return list.includes(ingredient.id);
-                }).map(function renderIngredientChip(ingredient) {
-                  const isSelected = selectedIngredientIds.includes(
-                    ingredient.id,
-                  );
-                  const isRequired = requiredIds.includes(ingredient.id);
-                  const isHinted = hintIds.includes(ingredient.id);
-                  return (
-                    <TouchableOpacity
-                      key={ingredient.id}
-                      style={[
-                        isSelected ? styles.chipSelected : styles.chip,
-                        showHint && isRequired ? styles.chipHint : null,
-                        isHinted ? styles.chipHint : null,
-                        isSelected ? styles.chipScaleSelected : null,
-                      ]}
-                      onPress={() => toggleIngredient(ingredient.id)}
-                    >
-                      <Image
-                        source={getIngredientImage(ingredient.id)}
-                        style={styles.chipImage}
-                      />
-                      <Text
-                        style={
-                          isSelected ? styles.chipTextSelected : styles.chipText
-                        }
-                      >
-                        {getIngredientName(ingredient.id)}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
+                }).map(renderIngredientChip)}
               </ScrollView>
             )}
             {acceptedOrder && (
@@ -676,7 +661,7 @@ function GameScreen(): React.ReactElement {
                 <View style={styles.actionItem}>
                   <TouchableOpacity
                     style={[styles.secondaryButtonSmall, styles.fullButton]}
-                    onPress={() => setShowRecipeModal(true)}
+                    onPress={openRecipes}
                     accessibilityLabel={t('recipes')}
                   >
                     <Text style={styles.secondaryButtonText}>
@@ -722,10 +707,7 @@ function GameScreen(): React.ReactElement {
       {showRecipeModal ? (
         <View style={styles.globalOverlay} pointerEvents="auto">
           <View style={styles.globalDim} />
-          <RecipeModal
-            visible={showRecipeModal}
-            onClose={() => setShowRecipeModal(false)}
-          />
+          <RecipeModal visible={showRecipeModal} onClose={closeRecipes} />
         </View>
       ) : null}
       {confirmVisible ? (
@@ -733,15 +715,8 @@ function GameScreen(): React.ReactElement {
           <View style={styles.globalDim} />
           <AdConfirmationModal
             visible={confirmVisible}
-            onClose={function close() {
-              setConfirmVisible(false);
-              setConfirmType(null);
-            }}
-            onConfirm={function confirm() {
-              if (confirmType) showAd(confirmType);
-              setConfirmVisible(false);
-              setConfirmType(null);
-            }}
+            onClose={closeConfirm}
+            onConfirm={confirmAd}
             title={confirmTitle}
             message={confirmMessage}
             disabled={!isLoaded}
@@ -752,13 +727,7 @@ function GameScreen(): React.ReactElement {
       {isPaused && !confirmVisible ? (
         <View style={styles.globalOverlay} pointerEvents="auto">
           <View style={styles.globalDim} />
-          <PauseBanner
-            onResume={() => resumeGame()}
-            onHome={() => {
-              resetGame();
-              navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
-            }}
-          />
+          <PauseBanner onResume={resumeGame} onHome={goHome} />
         </View>
       ) : null}
     </SafeAreaView>

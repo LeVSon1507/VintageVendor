@@ -68,7 +68,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   panel: {
-    width: '84%',
+    width: '88%',
     backgroundColor: '#FFF8E7',
     borderColor: '#8B4513',
     borderWidth: 6,
@@ -92,6 +92,7 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
   },
   primaryBtn: {
     flex: 1,

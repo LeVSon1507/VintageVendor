@@ -81,6 +81,11 @@ class AdsManager {
         this.riLoaded = false;
       }
       this.emit('CLOSED', kind);
+
+      setTimeout(() => {
+        if (kind === 'rewarded') this.loadRewarded();
+        else this.loadRI();
+      }, 500);
     });
 
     ad.addAdEventListener(AdEventType.ERROR, err => {
@@ -92,7 +97,7 @@ class AdsManager {
       setTimeout(() => {
         if (kind === 'rewarded') this.loadRewarded();
         else this.loadRI();
-      }, 30000);
+      }, 5000);
     });
   }
 
