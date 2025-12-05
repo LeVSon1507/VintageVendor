@@ -83,7 +83,7 @@ function HomeScreen(): React.ReactElement {
               accessibilityLabel="open-store"
             >
               <Image
-                source={require('../assets/images/icon/plus.png')}
+                source={require('../assets/images/icon/plus.webp')}
                 style={styles.iconSmallPlus}
                 resizeMode="contain"
               />

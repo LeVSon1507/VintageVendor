@@ -488,7 +488,7 @@ function GameScreen(): React.ReactElement {
           <Text style={styles.topText}>💰 {coins}</Text>
           <TouchableOpacity style={styles.plusButton} onPress={openMoney}>
             <Image
-              source={require('../assets/images/icon/plus.png')}
+              source={require('../assets/images/icon/plus.webp')}
               style={styles.iconSmallPlus}
               resizeMode="contain"
             />
@@ -519,7 +519,7 @@ function GameScreen(): React.ReactElement {
             onPress={handlePause}
           >
             <Image
-              source={require('../assets/images/icon/pause.png')}
+              source={require('../assets/images/icon/pause.webp')}
               style={styles.iconSmall}
               resizeMode="contain"
             />
@@ -681,7 +681,7 @@ function GameScreen(): React.ReactElement {
                     ) : (
                       <View style={styles.inlineGroup}>
                         <Image
-                          source={require('../assets/images/icon/tivi.png')}
+                          source={require('../assets/images/icon/tivi.webp')}
                           style={styles.iconSmall}
                           resizeMode="contain"
                         />
