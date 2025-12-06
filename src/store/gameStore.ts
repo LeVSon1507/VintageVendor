@@ -82,6 +82,7 @@ interface GameStore {
   addExp: (amount: number) => void;
   consumeEnergy: (amount: number) => void;
   restoreEnergy: (amount: number) => void;
+  restoreEnergyOverflow: (amount: number) => void;
   resetRoundTimer: () => void;
 
   // Score management
@@ -590,6 +591,10 @@ const useGameStore = create<GameStore>()(
         set({
           energy: Math.min(state.maxEnergy, state.energy + Math.max(0, amount)),
         });
+      },
+      restoreEnergyOverflow: amount => {
+        const state = get();
+        set({ energy: state.energy + Math.max(0, amount) });
       },
       watchAdEnergy: () => {
         const state = get();

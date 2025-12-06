@@ -30,17 +30,20 @@ function HomeScreen(): React.ReactElement {
   const refreshEnergy = useGameStore(state => state.refreshEnergy);
   const resetDailyHints = useGameStore(state => state.resetDailyHints);
   const addCoins = useGameStore(state => state.addCoins);
-  const restoreEnergy = useGameStore(state => state.restoreEnergy);
+
   const lastEnergyAt = useGameStore(state => state.lastEnergyAt);
 
   const [confirmVisible, setConfirmVisible] = useState<boolean>(false);
   const [confirmTitle, setConfirmTitle] = useState<string>('');
   const [confirmMessage, setConfirmMessage] = useState<string>('');
+  const [confirmKind, setConfirmKind] = useState<'ENERGY' | 'MONEY' | null>(
+    null,
+  );
 
   const { showAd, isLoaded, preload, statusText } = useGameAds(
     function onReward(type) {
       if (type === 'ENERGY') {
-        restoreEnergy(5);
+        useGameStore.getState().restoreEnergyOverflow(5);
         return;
       }
       if (type === 'MONEY') {
@@ -58,6 +61,14 @@ function HomeScreen(): React.ReactElement {
   );
 
   function handleStart(): void {
+    if (energy <= 0) {
+      setConfirmKind('ENERGY');
+      setConfirmTitle(t('energyDepletedTitle'));
+      setConfirmMessage(t('energyDepletedMessage'));
+      setConfirmVisible(true);
+      preload();
+      return;
+    }
     startGame();
     navigation.navigate('Game');
   }
@@ -75,15 +86,17 @@ function HomeScreen(): React.ReactElement {
   }
 
   function openConfirmEnergy(): void {
-    setConfirmTitle('Hồi năng lượng');
-    setConfirmMessage('Xem video để nhận 5 năng lượng');
+    setConfirmKind('ENERGY');
+    setConfirmTitle(t('adTitleEnergy'));
+    setConfirmMessage(t('adMessageEnergy'));
     setConfirmVisible(true);
     preload();
   }
 
   function openConfirmMoney(): void {
-    setConfirmTitle('Nhận tiền');
-    setConfirmMessage('Xem video để nhận tiền thưởng');
+    setConfirmKind('MONEY');
+    setConfirmTitle(t('adTitleMoney'));
+    setConfirmMessage(t('adMessageMoney'));
     setConfirmVisible(true);
     preload();
   }
@@ -108,7 +121,7 @@ function HomeScreen(): React.ReactElement {
         clearInterval(timer);
       };
     },
-    [energy, maxEnergy, lastEnergyAt],
+    [energy, maxEnergy, lastEnergyAt, refreshEnergy],
   );
 
   return (
@@ -218,13 +231,13 @@ function HomeScreen(): React.ReactElement {
               setConfirmVisible(false);
             }}
             onConfirm={function confirm() {
-              const isEnergy = confirmTitle === 'Hồi năng lượng';
-              if (isEnergy) {
+              if (confirmKind === 'ENERGY') {
                 showAd('ENERGY');
               } else {
                 showAd('MONEY');
               }
               setConfirmVisible(false);
+              setConfirmKind(null);
             }}
             title={confirmTitle}
             message={confirmMessage}

@@ -41,15 +41,12 @@ export function getConfirmContent(kind: 'HINT' | 'ENERGY' | 'MONEY'): {
   message: string;
 } {
   if (kind === 'HINT') {
-    return { title: 'Thêm gợi ý', message: 'Xem video để nhận thêm gợi ý' };
+    return { title: t('adTitleHint'), message: t('adMessageHint') };
   }
   if (kind === 'ENERGY') {
-    return {
-      title: 'Hồi năng lượng',
-      message: 'Xem video để nhận 5 năng lượng',
-    };
+    return { title: t('adTitleEnergy'), message: t('adMessageEnergy') };
   }
-  return { title: 'Nhận tiền', message: 'Xem video để nhận tiền thưởng' };
+  return { title: t('adTitleMoney'), message: t('adMessageMoney') };
 }
 
 export function getCategoryLabel(key: string): string {
@@ -65,14 +62,14 @@ export function getNpcHintMessage(
   recipe: any,
 ): string | null {
   const map: Record<string, string> = {
-    'Thêm đá': 'Nhớ cho đúng phần đá nghen!',
-    'Ít đá': 'Cho ít đá thôi nghen!',
-    'Không đá': 'Không cho đá nhé!',
-    'Ít đường': 'Ít đường thôi!',
-    'Không cay': 'Không cay dùm nhé!',
-    Cay: 'Cho cay cay nhé!',
-    Nóng: 'Làm nóng nhé!',
-    Lạnh: 'Làm lạnh nhé!',
+    'Thêm đá': t('hintAddIce'),
+    'Ít đá': t('hintLessIce'),
+    'Không đá': t('hintNoIce'),
+    'Ít đường': t('hintLessSugar'),
+    'Không cay': t('hintNoSpicy'),
+    Cay: t('hintSpicy'),
+    Nóng: t('hintHot'),
+    Lạnh: t('hintCold'),
   };
   const allowed = requirements.filter(function isAllowed(requirement) {
     if (!recipe) return typeof map[requirement] === 'string';
@@ -95,9 +92,9 @@ export function getNpcHintMessage(
   if (allowed.length > 0) return map[allowed[0]];
   if (recipe)
     return recipe.temperature === 'Hot'
-      ? 'Làm nóng giùm nhé!'
-      : 'Nhớ cho đúng phần đá nhé!';
-  return 'Nhớ pha cho đúng nhé!';
+      ? t('hintDefaultHot')
+      : t('hintDefaultCold');
+  return t('hintDefault');
 }
 
 export function getMissingRequiredIds(

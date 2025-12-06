@@ -145,11 +145,31 @@ function CustomerWalker(props: CustomerWalkerProps): React.ReactElement {
             </Text>
           </Animated.View>
         )}
-        <Image
-          source={isWalking ? walkFrames[frameIndex] || idleFrame : idleFrame}
-          style={styles.avatarImg}
-          resizeMode="contain"
-        />
+        <View style={styles.imageStack}>
+          <Image
+            source={idleFrame}
+            style={[
+              styles.avatarImg,
+              styles.absoluteImg,
+              !isWalking ? styles.show : styles.hide,
+            ]}
+            resizeMode="contain"
+          />
+          {walkFrames.map(function renderWalk(frame, index) {
+            return (
+              <Image
+                key={`walk-${index}`}
+                source={frame}
+                style={[
+                  styles.avatarImg,
+                  styles.absoluteImg,
+                  isWalking && frameIndex === index ? styles.show : styles.hide,
+                ]}
+                resizeMode="contain"
+              />
+            );
+          })}
+        </View>
         {reaction && (
           <View style={styles.reactionAbove}>
             <Text
@@ -223,7 +243,16 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   avatarWrap: { marginRight: 8, position: 'relative' },
+  imageStack: {
+    width: 42,
+    height: 42,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   avatarImg: { width: 42, height: 42 },
+  absoluteImg: { position: 'absolute', top: 0, left: 0 },
+  show: { opacity: 1 },
+  hide: { opacity: 0 },
   reactionAbove: { position: 'absolute', top: -18, left: -20, zIndex: 3 },
   reactionHappy: { fontSize: 20 },
   reactionAngry: { fontSize: 20 },

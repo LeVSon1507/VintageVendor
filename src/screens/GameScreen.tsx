@@ -1,4 +1,10 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, {
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+  useMemo,
+} from 'react';
 import {
   View,
   Text,
@@ -25,13 +31,15 @@ import { AdConfirmationModal } from '../components/AdConfirmationModal';
 import { getRecipeById } from '../game/recipes';
 import { useGameAds } from '../hooks/useGameAds';
 import {
-  startAmbient,
-  stopAmbient,
   playVendorArrive,
   playServeSuccess,
   playServeFail,
   playClick,
 } from '../audio/soundManager';
+import { useGameAudio } from '../hooks/useGameAudio';
+import { useGameLoop } from '../hooks/useGameLoop';
+import { useStallAnimation } from '../hooks/useStallAnimation';
+import { useCustomerSpawner } from '../hooks/useCustomerSpawner';
 import { INGREDIENT_CATEGORIES } from '../game/categories';
 import { t } from '../i18n';
 import {
@@ -79,60 +87,21 @@ function GameScreen(): React.ReactElement {
   const resetGame = useGameStore(state => state.resetGame);
 
   const intervalRef = useRef<number | null>(null);
-  const stallAnim = useRef(new Animated.Value(0)).current;
+  const stallAnim = useStallAnimation();
 
-  useEffect(
-    function setupAmbient() {
-      startAmbient(settings.musicVolume);
-      return function cleanupAmbient() {
-        stopAmbient();
-      };
-    },
-    [settings.musicVolume],
+  useGameAudio(settings.musicVolume);
+  const [acceptedOrder, setAcceptedOrder] = useState<boolean>(false);
+  const isPaused = useGameStore(state => state.isPaused);
+  useCustomerSpawner(8000);
+
+  const decrementTime = useGameStore(state => state.decrementTime);
+  useGameLoop(
+    isPaused,
+    customers.length,
+    acceptedOrder,
+    spawnCustomerWithOrder,
+    decrementTime,
   );
-
-  useEffect(
-    function animateStall() {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(stallAnim, {
-            toValue: 1,
-            duration: 1500,
-            useNativeDriver: true,
-          }),
-          Animated.timing(stallAnim, {
-            toValue: 0,
-            duration: 1500,
-            useNativeDriver: true,
-          }),
-        ]),
-      ).start();
-      return function cleanup() {};
-    },
-    [stallAnim],
-  );
-
-  useEffect(
-    function autoSpawnOnMount() {
-      if (customers.length === 0) {
-        const spawn = useGameStore.getState().spawnCustomerWithOrder;
-        spawn();
-      }
-    },
-    [customers.length],
-  );
-
-  useEffect(function autoSpawnLoop() {
-    const interval = setInterval(function tick() {
-      const state = useGameStore.getState();
-      if (!state.isPaused && state.customers.length < 5) {
-        state.spawnCustomerWithOrder();
-      }
-    }, 8000);
-    return function cleanup() {
-      clearInterval(interval);
-    };
-  }, []);
 
   useEffect(
     function checkEnd() {
@@ -164,15 +133,23 @@ function GameScreen(): React.ReactElement {
   const [reaction, setReaction] = useState<'success' | 'fail' | null>(null);
   const [coinText, setCoinText] = useState<string>('');
   const coinAnim = useRef(new Animated.Value(0)).current;
-  const consumeEnergy = useGameStore(state => state.consumeEnergy);
-  const restoreEnergy = useGameStore(state => state.restoreEnergy);
-  const [acceptedOrder, setAcceptedOrder] = useState<boolean>(false);
+
   const [actionDisabled, setActionDisabled] = useState<boolean>(false);
   const [activeCategory, setActiveCategory] = useState<string>('base');
-  const isPaused = useGameStore(state => state.isPaused);
   const resumeGame = useGameStore(state => state.resumeGame);
   const [hintIds, setHintIds] = useState<string[]>([]);
-  const [npcHint, setNpcHint] = useState<string>('');
+  const currentCustomer = customers[0];
+  const npcHint = useMemo(
+    function computeNpcHint() {
+      if (!currentCustomer || acceptedOrder) return '';
+      const probability = Math.random();
+      if (probability > 0.06) return '';
+      const item = currentCustomer.order.items[0] as any;
+      const recipe = getRecipeById(item.id);
+      return getNpcHintMessage(item.requirements || [], recipe) || '';
+    },
+    [currentCustomer, acceptedOrder],
+  );
   const [showRecipeModal, setShowRecipeModal] = useState<boolean>(false);
   const [hintCount, setHintCount] = useState<number>(3);
   const [categoryHintKey, setCategoryHintKey] = useState<string | null>(null);
@@ -192,7 +169,7 @@ function GameScreen(): React.ReactElement {
         return;
       }
       if (type === 'ENERGY') {
-        restoreEnergy(5);
+        useGameStore.getState().restoreEnergyOverflow(5);
         return;
       }
       if (type === 'MONEY') {
@@ -285,37 +262,12 @@ function GameScreen(): React.ReactElement {
     );
   }
 
-  useEffect(
-    function startTimer() {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-      intervalRef.current = setInterval(function tick() {
-        if (acceptedOrder) {
-          const store = useGameStore.getState();
-          if (!store.isPaused) {
-            store.decrementTime();
-          }
-        }
-      }, 1000);
-      return function cleanup() {
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-          intervalRef.current = null;
-        }
-      };
-    },
-    [acceptedOrder],
-  );
-
   const onArriveCustomer = useCallback(
     function onArriveCustomer(customerId: string): void {
       updateCustomer(customerId, { position: { x: 0, y: 0 }, mood: 'neutral' });
       playVendorArrive(settings.soundVolume);
       setActionDisabled(false);
       setHintIds([]);
-      setNpcHint('');
     },
     [updateCustomer, settings.soundVolume],
   );
@@ -384,9 +336,17 @@ function GameScreen(): React.ReactElement {
     openConfirm('MONEY');
   }
 
-  function openEnergy(): void {
-    openConfirm('ENERGY');
-  }
+  const openEnergy = useCallback(
+    function openEnergy() {
+      setConfirmType('ENERGY');
+      const content = getConfirmContent('ENERGY');
+      setConfirmTitle(content.title);
+      setConfirmMessage(content.message);
+      setConfirmVisible(true);
+      preload();
+    },
+    [preload],
+  );
 
   function openRecipes(): void {
     setShowRecipeModal(true);
@@ -411,16 +371,6 @@ function GameScreen(): React.ReactElement {
     resetGame();
     navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
   }
-
-  useEffect(
-    function syncEnergyAuto() {
-      const store = useGameStore.getState();
-      if (store.energy === 0) {
-        // no-op here; UI will allow ad flow
-      }
-    },
-    [energy],
-  );
 
   function handleHint(): void {
     if (actionDisabled) return;
@@ -460,24 +410,6 @@ function GameScreen(): React.ReactElement {
 
   const requiredIds = getRequiredIngredientIds(customers);
   const showHint = customersServed < 2;
-
-  useEffect(
-    function npcHintMaybe() {
-      if (customers.length === 0 || acceptedOrder) return;
-      const requirements: string[] =
-        (customers[0].order.items[0] as any).requirements || [];
-      const itemId = customers[0].order.items[0].id;
-      const recipe = getRecipeById(itemId);
-      const probability = Math.random();
-      if (probability < 0.06) {
-        const msg = getNpcHintMessage(requirements, recipe);
-        setNpcHint(msg || '');
-      } else {
-        setNpcHint('');
-      }
-    },
-    [customers, acceptedOrder],
-  );
 
   return (
     <SafeAreaView style={styles.container}>
