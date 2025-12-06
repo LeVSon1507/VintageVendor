@@ -16,11 +16,12 @@ export function useGameAds(
   const [isLoaded, setIsLoaded] = useState(false);
   const [statusText, setStatusText] = useState('Đang tải quảng cáo...');
 
-  // Xử lý sự kiện từ AdsManager
   useEffect(() => {
-    const onLoaded = () => {
+    const onLoaded = (kind?: 'rewarded' | 'ri') => {
       setIsLoaded(true);
-      setStatusText('Quảng cáo đã sẵn sàng');
+      setStatusText(
+        kind === 'ri' ? 'Quảng cáo đã sẵn sàng (RI)' : 'Quảng cáo đã sẵn sàng',
+      );
     };
 
     const onClosed = () => {
@@ -38,8 +39,18 @@ export function useGameAds(
     Ads.addEventListener('CLOSED', onClosed);
     Ads.addEventListener('ERROR', onError);
 
-    // Check trạng thái ban đầu (trigger load nếu cần)
-    Ads.loadRewarded();
+    const readyKind = Ads.getReadyKind?.() || null;
+    if (Ads.hasReadyAd?.()) {
+      setIsLoaded(true);
+      setStatusText(
+        readyKind === 'ri'
+          ? 'Quảng cáo đã sẵn sàng (RI)'
+          : 'Quảng cáo đã sẵn sàng',
+      );
+    } else {
+      Ads.loadRewarded();
+      Ads.loadRI();
+    }
 
     return () => {
       Ads.removeEventListener('LOADED', onLoaded);
@@ -56,7 +67,7 @@ export function useGameAds(
       if (kind === 'ENERGY') adType = 'ENERGY';
       else if (kind === 'MONEY') adType = 'DOUBLE_COINS';
 
-      const success = Ads.showRewarded(adType, type => {
+      const successRewarded = Ads.showRewarded(adType, type => {
         // Callback khi xem xong
         if (onReward) {
           // Map ngược lại để trả về cho UI
@@ -66,8 +77,19 @@ export function useGameAds(
         }
       });
 
-      if (!success) {
-        setStatusText('Quảng cáo chưa sẵn sàng. Vui lòng đợi.');
+      if (!successRewarded) {
+        const successRI = Ads.showRI(adType, type => {
+          if (onReward) {
+            const gameKind: RewardKind =
+              type === 'DOUBLE_COINS' ? 'MONEY' : (type as RewardKind);
+            onReward(gameKind);
+          }
+        });
+        if (!successRI) {
+          setStatusText('Quảng cáo chưa sẵn sàng. Đang tải nhanh...');
+          Ads.loadRewarded();
+          Ads.loadRI();
+        }
       }
     },
     [onReward],
@@ -76,6 +98,7 @@ export function useGameAds(
   const preload = useCallback(() => {
     setStatusText('Đang tải quảng cáo...');
     Ads.loadRewarded();
+    Ads.loadRI();
   }, []);
 
   return { isLoaded, showAd, preload, statusText };

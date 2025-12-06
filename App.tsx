@@ -14,12 +14,10 @@ import Ads from './src/services/AdsManager';
 
 function App(): React.ReactElement {
   useEffect(() => {
-    // Khởi tạo Google Mobile Ads SDK
     mobileAds()
       .initialize()
       .then(_adapterStatuses => {
         console.log('[App] AdMob SDK Initialized');
-        // Sau khi SDK sẵn sàng, setup AdsManager
         Ads.setup();
       })
       .catch(err => {

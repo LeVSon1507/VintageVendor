@@ -196,7 +196,7 @@ function GameScreen(): React.ReactElement {
         return;
       }
       if (type === 'MONEY') {
-        addCoins(100);
+        addCoins(100000);
         return;
       }
     },
@@ -205,7 +205,6 @@ function GameScreen(): React.ReactElement {
   function applyServeSuccess(currentOrderItem: any): void {
     setActionDisabled(true);
     serveCurrentCustomerCorrect();
-    consumeEnergy(1);
     playServeSuccess(settings.soundVolume);
     setReaction('success');
     setTimeout(function clearReaction() {
@@ -354,7 +353,6 @@ function GameScreen(): React.ReactElement {
     missingCount: number,
   ): void {
     serveCurrentCustomerWrong(missingCount);
-    consumeEnergy(1);
     playServeFail(settings.soundVolume);
     setReaction('fail');
     setTimeout(function clearReaction() {

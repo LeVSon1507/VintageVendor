@@ -200,6 +200,7 @@ const useGameStore = create<GameStore>()(
         const state = get();
         const today = new Date().toDateString();
         const now = Date.now();
+
         if (state.lastEnergyResetDate !== today) {
           set({
             energy: state.maxEnergy,
@@ -236,7 +237,7 @@ const useGameStore = create<GameStore>()(
           );
           set({ journeyDay: nextDay, journal: achievedJournal });
         } else {
-          const interval = 5 * 60 * 1000;
+          const interval = 10 * 60 * 1000;
           const last = state.lastEnergyAt ?? now;
           const gained = Math.floor((now - last) / interval);
           if (gained > 0) {
@@ -608,7 +609,7 @@ const useGameStore = create<GameStore>()(
           set({ dailyFreeHints: 3 });
           return;
         }
-        const interval = 5 * 60 * 1000;
+        const interval = 10 * 60 * 1000;
         const last = state.lastEnergyAt ?? now;
         const gained = Math.floor((now - last) / interval);
         if (gained > 0) {

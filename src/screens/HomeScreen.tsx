@@ -1,5 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Image,
+  Platform,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getStallImage } from '../game/assets';
 import { useNavigation } from '@react-navigation/native';
@@ -23,6 +30,8 @@ function HomeScreen(): React.ReactElement {
   const refreshEnergy = useGameStore(state => state.refreshEnergy);
   const resetDailyHints = useGameStore(state => state.resetDailyHints);
   const addCoins = useGameStore(state => state.addCoins);
+  const restoreEnergy = useGameStore(state => state.restoreEnergy);
+  const lastEnergyAt = useGameStore(state => state.lastEnergyAt);
 
   const [confirmVisible, setConfirmVisible] = useState<boolean>(false);
   const [confirmTitle, setConfirmTitle] = useState<string>('');
@@ -30,8 +39,12 @@ function HomeScreen(): React.ReactElement {
 
   const { showAd, isLoaded, preload, statusText } = useGameAds(
     function onReward(type) {
+      if (type === 'ENERGY') {
+        restoreEnergy(5);
+        return;
+      }
       if (type === 'MONEY') {
-        addCoins(100);
+        addCoins(100000);
       }
     },
   );
@@ -61,6 +74,13 @@ function HomeScreen(): React.ReactElement {
     navigation.navigate('StoreList');
   }
 
+  function openConfirmEnergy(): void {
+    setConfirmTitle('Hồi năng lượng');
+    setConfirmMessage('Xem video để nhận 5 năng lượng');
+    setConfirmVisible(true);
+    preload();
+  }
+
   function openConfirmMoney(): void {
     setConfirmTitle('Nhận tiền');
     setConfirmMessage('Xem video để nhận tiền thưởng');
@@ -68,25 +88,50 @@ function HomeScreen(): React.ReactElement {
     preload();
   }
 
+  const [countdown, setCountdown] = useState<string>('');
+
+  useEffect(
+    function energyCountdownTick() {
+      const intervalMs = 10 * 60 * 1000;
+      const timer = setInterval(function tick() {
+        refreshEnergy();
+        const now = Date.now();
+        const last = lastEnergyAt || now;
+        const elapsed = now - last;
+        const remainMs = intervalMs - (elapsed % intervalMs);
+        const minutes = Math.floor(remainMs / 60000);
+        const seconds = Math.floor((remainMs % 60000) / 1000);
+        const padded = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        setCountdown(energy >= maxEnergy ? 'Đã đầy' : padded);
+      }, 1000) as unknown as number;
+      return function cleanup() {
+        clearInterval(timer);
+      };
+    },
+    [energy, maxEnergy, lastEnergyAt],
+  );
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <View style={styles.topHeaderRow}>
           <View style={styles.moneyGroup}>
-            <View style={styles.coinsSummary}>
+            <TouchableOpacity
+              style={styles.coinsSummary}
+              onPress={openConfirmMoney}
+            >
               <Text style={styles.coinIcon}>💰</Text>
               <Text style={styles.coinText}>{coins}</Text>
-            </View>
-            <TouchableOpacity
-              style={styles.plusSmallButton}
-              onPress={openConfirmMoney}
-              accessibilityLabel="open-store"
-            >
-              <Image
-                source={require('../assets/images/icon/plus.webp')}
-                style={styles.iconSmallPlus}
-                resizeMode="contain"
-              />
+              <View
+                style={styles.plusSmallButton}
+                accessibilityLabel="open-popup-money"
+              >
+                <Image
+                  source={require('../assets/images/icon/plus.webp')}
+                  style={styles.iconSmallPlus}
+                  resizeMode="contain"
+                />
+              </View>
             </TouchableOpacity>
           </View>
           <View style={styles.topRightBar}>
@@ -102,11 +147,27 @@ function HomeScreen(): React.ReactElement {
                 {settings.language === 'vi' ? 'EN' : 'VI'}
               </Text>
             </TouchableOpacity>
-            <View style={styles.energySummary}>
-              <Text style={styles.energyIcon}>⚡</Text>
-              <Text style={styles.energyText}>
-                {energy}/{maxEnergy}
-              </Text>
+            <View>
+              <TouchableOpacity
+                onPress={openConfirmEnergy}
+                style={styles.energySummary}
+              >
+                <Text style={styles.energyIcon}>⚡</Text>
+                <Text style={styles.energyText}>
+                  {energy}/{maxEnergy}
+                </Text>
+                <View
+                  style={styles.plusSmallButtonEnergy}
+                  accessibilityLabel="open-popup-energy"
+                >
+                  <Image
+                    source={require('../assets/images/icon/plus.webp')}
+                    style={styles.iconSmallPlus}
+                    resizeMode="contain"
+                  />
+                </View>
+                <Text style={styles.countdownText}>{countdown}</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -157,7 +218,12 @@ function HomeScreen(): React.ReactElement {
               setConfirmVisible(false);
             }}
             onConfirm={function confirm() {
-              showAd('MONEY');
+              const isEnergy = confirmTitle === 'Hồi năng lượng';
+              if (isEnergy) {
+                showAd('ENERGY');
+              } else {
+                showAd('MONEY');
+              }
               setConfirmVisible(false);
             }}
             title={confirmTitle}
@@ -196,29 +262,57 @@ const styles = StyleSheet.create({
   langToggleText: { color: '#3B2F2F', fontWeight: '600' },
   energySummary: {
     backgroundColor: '#E6D5B8',
-    paddingVertical: 6,
+    paddingVertical: 0,
     paddingHorizontal: 10,
     borderRadius: 12,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 34,
+  },
+  countdownText: {
+    marginLeft: 10,
+    color: '#6B5B5B',
+    fontWeight: '500',
   },
   coinsSummary: {
     backgroundColor: '#E6D5B8',
-    paddingVertical: 6,
+    paddingVertical: 0,
     paddingHorizontal: 10,
     borderRadius: 12,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     marginRight: 8,
+    minHeight: 34,
   },
-  coinIcon: { color: '#8A4F2B', marginRight: 6 },
-  coinText: { color: '#3B2F2F', fontWeight: '600' },
-  energyIcon: { color: '#8A4F2B', marginRight: 6 },
-  energyText: { color: '#3B2F2F', fontWeight: '600' },
+  coinIcon: { color: '#8A4F2B', marginRight: 6, fontSize: 16, lineHeight: 18 },
+  coinText: {
+    color: '#3B2F2F',
+    fontWeight: '600',
+    fontSize: 14,
+    lineHeight: 18,
+    textAlignVertical: 'center',
+  },
+  energyIcon: {
+    color: '#8A4F2B',
+    marginRight: 6,
+    fontSize: 16,
+    lineHeight: 18,
+  },
+  energyText: {
+    color: '#3B2F2F',
+    fontWeight: '600',
+    fontSize: 14,
+    lineHeight: 18,
+    textAlignVertical: 'center',
+  },
   plusSmallButton: {
-    backgroundColor: '#EBDCC2',
-    paddingVertical: 6,
-    paddingHorizontal: 8,
+    paddingLeft: 6,
+    borderRadius: 12,
+  },
+  plusSmallButtonEnergy: {
+    paddingLeft: 6,
     borderRadius: 12,
   },
   iconSmallPlus: { width: 20, height: 20 },
@@ -242,15 +336,38 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(139, 69, 19, 0.18)',
   },
   titleBlock: { marginTop: 40, alignItems: 'center' },
-  title: { fontSize: 28, fontWeight: '700', color: '#3B2F2F' },
-  subtitle: { fontSize: 14, color: '#6B5B5B', marginTop: 4 },
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#3B2F2F',
+    fontFamily: Platform.select({
+      ios: 'Marker Felt',
+      android: 'serif',
+    }),
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#6B5B5B',
+    fontFamily: Platform.select({
+      ios: 'Marker Felt',
+      android: 'serif',
+    }),
+    marginTop: 4,
+    fontWeight: '600',
+  },
   actions: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 24,
   },
-  stallHome: { width: '86%', height: 160, marginVertical: 28 },
+  stallHome: {
+    width: '86%',
+    height: 160,
+    marginTop: 16,
+    marginBottom: 50,
+    transform: [{ scale: 1.5 }],
+  },
   primaryButton: {
     backgroundColor: '#8B4513',
     paddingVertical: 14,
@@ -262,13 +379,13 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
   },
   primaryButtonText: { color: '#FFF8E1', fontSize: 18, fontWeight: '600' },
-  row: { flexDirection: 'row', marginTop: 16 },
+  row: { flexDirection: 'row', marginTop: 20 },
   storeButton: {
     backgroundColor: '#D2B48C',
     paddingVertical: 12,
     paddingHorizontal: 28,
     borderRadius: 10,
-    marginTop: 12,
+    marginTop: 16,
   },
   secondaryButton: {
     backgroundColor: '#D2B48C',
@@ -278,7 +395,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 8,
   },
   secondaryButtonText: { color: '#3B2F2F', fontSize: 16, fontWeight: '500' },
-  footer: { padding: 16, alignItems: 'center' },
+  footer: { padding: 16, alignItems: 'center', marginTop: 'auto' },
   footerText: { color: '#6B5B5B' },
 });
 

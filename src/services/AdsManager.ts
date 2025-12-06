@@ -22,10 +22,14 @@ class AdsManager {
   private listeners = new Map<AdEvent, Set<(data?: any) => void>>();
 
   private rewarded: RewardedAd | null = null;
+  private rewarded2: RewardedAd | null = null;
   private ri: RewardedInterstitialAd | null = null;
+  private ri2: RewardedInterstitialAd | null = null;
 
   private rewardedLoaded = false;
+  private rewarded2Loaded = false;
   private riLoaded = false;
+  private ri2Loaded = false;
 
   private onRewardCallback: ((type: RewardType) => void) | null = null;
   private pendingRewardType: RewardType = 'HINT';
@@ -43,25 +47,52 @@ class AdsManager {
     this.rewarded = RewardedAd.createForAdRequest(AD_UNIT_REWARDED, {
       requestNonPersonalizedAdsOnly: true,
     });
+    this.rewarded2 = RewardedAd.createForAdRequest(AD_UNIT_REWARDED, {
+      requestNonPersonalizedAdsOnly: true,
+    });
     this.ri = RewardedInterstitialAd.createForAdRequest(AD_UNIT_RI, {
+      requestNonPersonalizedAdsOnly: true,
+    });
+    this.ri2 = RewardedInterstitialAd.createForAdRequest(AD_UNIT_RI, {
       requestNonPersonalizedAdsOnly: true,
     });
 
     this.attachListeners(this.rewarded, 'rewarded');
+    this.attachListeners(this.rewarded2, 'rewarded2');
     this.attachListeners(this.ri, 'ri');
+    this.attachListeners(this.ri2, 'ri2');
 
     this.loadRewarded();
+    this.loadRewarded2();
     this.loadRI();
+    this.loadRI2();
+  }
+
+  hasReadyAd(): boolean {
+    return (
+      this.rewardedLoaded ||
+      this.rewarded2Loaded ||
+      this.riLoaded ||
+      this.ri2Loaded
+    );
+  }
+
+  getReadyKind(): 'rewarded' | 'ri' | null {
+    if (this.rewardedLoaded || this.rewarded2Loaded) return 'rewarded';
+    if (this.riLoaded || this.ri2Loaded) return 'ri';
+    return null;
   }
 
   private attachListeners(
     ad: RewardedAd | RewardedInterstitialAd,
-    kind: 'rewarded' | 'ri',
+    kind: 'rewarded' | 'rewarded2' | 'ri' | 'ri2',
   ) {
     ad.addAdEventListener(RewardedAdEventType.LOADED, () => {
       log(`[ADS] ${kind} LOADED`);
       if (kind === 'rewarded') this.rewardedLoaded = true;
-      else this.riLoaded = true;
+      else if (kind === 'rewarded2') this.rewarded2Loaded = true;
+      else if (kind === 'ri') this.riLoaded = true;
+      else this.ri2Loaded = true;
       this.emit('LOADED', kind);
     });
 
@@ -75,28 +106,33 @@ class AdsManager {
 
     ad.addAdEventListener(AdEventType.CLOSED, () => {
       log(`[ADS] ${kind} CLOSED`);
-      if (kind === 'rewarded') {
-        this.rewardedLoaded = false;
-      } else {
-        this.riLoaded = false;
-      }
+      if (kind === 'rewarded') this.rewardedLoaded = false;
+      else if (kind === 'rewarded2') this.rewarded2Loaded = false;
+      else if (kind === 'ri') this.riLoaded = false;
+      else this.ri2Loaded = false;
       this.emit('CLOSED', kind);
 
       setTimeout(() => {
         if (kind === 'rewarded') this.loadRewarded();
-        else this.loadRI();
-      }, 500);
+        else if (kind === 'rewarded2') this.loadRewarded2();
+        else if (kind === 'ri') this.loadRI();
+        else this.loadRI2();
+      }, 300);
     });
 
     ad.addAdEventListener(AdEventType.ERROR, err => {
       log(`[ADS] ${kind} ERROR:`, err);
       if (kind === 'rewarded') this.rewardedLoaded = false;
-      else this.riLoaded = false;
+      else if (kind === 'rewarded2') this.rewarded2Loaded = false;
+      else if (kind === 'ri') this.riLoaded = false;
+      else this.ri2Loaded = false;
       this.emit('ERROR', kind);
 
       setTimeout(() => {
         if (kind === 'rewarded') this.loadRewarded();
-        else this.loadRI();
+        else if (kind === 'rewarded2') this.loadRewarded2();
+        else if (kind === 'ri') this.loadRI();
+        else this.loadRI2();
       }, 5000);
     });
   }
@@ -108,6 +144,13 @@ class AdsManager {
     }
   }
 
+  loadRewarded2() {
+    if (!this.rewarded2Loaded && this.rewarded2) {
+      log('[ADS] Loading Rewarded (spare)...');
+      this.rewarded2.load();
+    }
+  }
+
   loadRI() {
     if (!this.riLoaded && this.ri) {
       log('[ADS] Loading RI...');
@@ -115,37 +158,60 @@ class AdsManager {
     }
   }
 
+  loadRI2() {
+    if (!this.ri2Loaded && this.ri2) {
+      log('[ADS] Loading RI (spare)...');
+      this.ri2.load();
+    }
+  }
+
   showRewarded(
     type: RewardType,
     onReward?: (type: RewardType) => void,
   ): boolean {
-    if (!this.rewardedLoaded || !this.rewarded) {
+    // chọn slot đã sẵn sàng
+    let target: RewardedAd | null = null;
+    if (this.rewardedLoaded && this.rewarded) target = this.rewarded;
+    else if (this.rewarded2Loaded && this.rewarded2) target = this.rewarded2;
+    if (!target) {
       this.loadRewarded();
+      this.loadRewarded2();
       return false;
     }
     this.pendingRewardType = type;
     this.onRewardCallback = onReward || null;
     try {
-      this.rewarded.show();
+      target.show();
+      // đảm bảo slot còn lại tải sẵn trong lúc xem
+      this.loadRewarded();
+      this.loadRewarded2();
       return true;
     } catch {
       this.loadRewarded();
+      this.loadRewarded2();
       return false;
     }
   }
 
   showRI(type: RewardType, onReward?: (type: RewardType) => void): boolean {
-    if (!this.riLoaded || !this.ri) {
+    let target: RewardedInterstitialAd | null = null;
+    if (this.riLoaded && this.ri) target = this.ri;
+    else if (this.ri2Loaded && this.ri2) target = this.ri2;
+    if (!target) {
       this.loadRI();
+      this.loadRI2();
       return false;
     }
     this.pendingRewardType = type;
     this.onRewardCallback = onReward || null;
     try {
-      this.ri.show();
+      target.show();
+      this.loadRI();
+      this.loadRI2();
       return true;
     } catch {
       this.loadRI();
+      this.loadRI2();
       return false;
     }
   }

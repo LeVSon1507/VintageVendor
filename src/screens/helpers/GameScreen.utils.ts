@@ -36,14 +36,18 @@ export function computePenalty(basePrice: number): number {
   return Math.max(0, Math.round(basePrice * 0.1));
 }
 
-export function getConfirmContent(
-  kind: 'HINT' | 'ENERGY' | 'MONEY',
-): { title: string; message: string } {
+export function getConfirmContent(kind: 'HINT' | 'ENERGY' | 'MONEY'): {
+  title: string;
+  message: string;
+} {
   if (kind === 'HINT') {
     return { title: 'Thêm gợi ý', message: 'Xem video để nhận thêm gợi ý' };
   }
   if (kind === 'ENERGY') {
-    return { title: 'Hồi năng lượng', message: 'Xem video để nhận 5 năng lượng' };
+    return {
+      title: 'Hồi năng lượng',
+      message: 'Xem video để nhận 5 năng lượng',
+    };
   }
   return { title: 'Nhận tiền', message: 'Xem video để nhận tiền thưởng' };
 }
@@ -118,11 +122,15 @@ export function getCandidateRequiredId(
   return found || requiredIdsInput[0] || null;
 }
 
-export function getCategoryKeyForIngredient(ingredientId: string): string | null {
-  const categoryEntry = Object.entries(INGREDIENT_CATEGORIES).find(function findCategory(entry) {
-    const categoryList = entry[1] as string[];
-    return categoryList.includes(ingredientId);
-  });
+export function getCategoryKeyForIngredient(
+  ingredientId: string,
+): string | null {
+  const categoryEntry = Object.entries(INGREDIENT_CATEGORIES).find(
+    function findCategory(entry) {
+      const categoryList = entry[1] as string[];
+      return categoryList.includes(ingredientId);
+    },
+  );
   return categoryEntry ? (categoryEntry[0] as string) : null;
 }
 
@@ -132,7 +140,10 @@ export function getTotalTime(difficulty: string): number {
   return 60;
 }
 
-export function computeTimeRatio(timeRemaining: number, totalTime: number): number {
+export function computeTimeRatio(
+  timeRemaining: number,
+  totalTime: number,
+): number {
   return clamp01(timeRemaining / totalTime);
 }
 
@@ -147,4 +158,23 @@ export function getRequiredIngredientIds(customers: Customer[]): string[] {
   return customers[0].order.items[0].ingredients.map(function toId(ingredient) {
     return ingredient.id;
   });
+}
+
+export type HintStrategy = 'INGREDIENT' | 'CATEGORY' | 'AD';
+
+export function selectHintStrategy(
+  requiredIdsInput: string[],
+  selectedIdsInput: string[],
+  hintIdsInput: string[],
+  hintCountInput: number,
+): HintStrategy {
+  if (hintCountInput <= 0) return 'AD';
+  const missingRequired = getMissingRequiredIds(
+    requiredIdsInput,
+    selectedIdsInput,
+    hintIdsInput,
+  );
+  if (missingRequired.length > 0) return 'INGREDIENT';
+  if (requiredIdsInput.length > 0) return 'CATEGORY';
+  return 'INGREDIENT';
 }
